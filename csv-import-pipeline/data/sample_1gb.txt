@@ -1,0 +1,4 @@
+The large benchmark dataset is kept locally and is not tracked by Git.
+
+Local file path:
+D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\data\sample_1gb.csv
