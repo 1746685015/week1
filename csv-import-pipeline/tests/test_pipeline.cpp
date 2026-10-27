@@ -177,6 +177,37 @@ TEST(Pipeline, ParseErrorDoesNotBecomeEof)
 	std::filesystem::remove(path);
 }
 
+TEST(Pipeline, ErrorPreservesRawCsvLine)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_raw_error_line_" + std::to_string(uniqueValue) + ".csv");
+	const std::string rawLine = "not-int;\"  has; delimiter and \"\"quote\"\"  \"; maybe ";
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "id;note;active\n" << rawLine << "\n";
+	}
+
+	ImportPipeline::Config config;
+	config.parser.delimiter = ';';
+	config.skip_bad_rows = true;
+	const std::vector<FieldRule> rules = {
+		{"id", FieldType::Int, true},
+		{"note", FieldType::String, true},
+		{"active", FieldType::Bool, true},
+	};
+	ImportPipeline pipeline(config, rules);
+	const ImportPipeline::Result result = pipeline.importSync(path.string().c_str());
+
+	EXPECT_EQ(result.rows_imported, 0U);
+	EXPECT_EQ(result.rows_skipped, 1U);
+	ASSERT_EQ(result.errors.size(), 1U);
+	EXPECT_EQ(result.errors[0].raw_line.size(), rawLine.size());
+	EXPECT_EQ(result.errors[0].raw_line, rawLine);
+	std::filesystem::remove(path);
+}
+
 // ============================================================
 // Pipeline.StreamingImportNotImplemented (PASS - skeleton check)
 // ============================================================

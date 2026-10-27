@@ -352,4 +352,9 @@ std::size_t CsvParser::bytesRead() const
 	return m_bytesRead;
 }
 
+void CsvParser::getRawLine(std::string &rawLine) const
+{
+	rawLine = m_lineBuffer;
+}
+
 } // namespace csvp

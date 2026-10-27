@@ -421,3 +421,32 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a11-read-status`。
+
+## A-12：错误记录中的 `raw_line` 不是原始 CSV 行
+
+### 复现与根因
+
+管道原来把解析后的字段固定用逗号重新拼接为 `raw_line`。该过程会丢失自定义分隔符、字段引号、转义双引号、引号内分隔符和被 trim 的空白，解析错误路径甚至只能写入“原始行不可用”的占位文本。
+
+### 修复
+
+- 解析器新增输出参数接口，复制当前物理行的原始字节（不包含 CRLF/LF 行结束符）。
+- 解析错误、列数错误和字段校验错误统一从解析器取得原始行，不再重新序列化字段。
+- 使用输出参数而不是暴露内部字符串引用，保持解析器缓冲区所有权明确。
+- 新增分号分隔测试，逐字节检查包含引号、引号内分号、转义双引号和尾随空格的错误行。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Pipeline.ErrorPreservesRawCsvLine:Pipeline.ParseErrorDoesNotBecomeEof
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Pipeline.ErrorPreservesRawCsvLine:Pipeline.ParseErrorDoesNotBecomeEof
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Pipeline.ErrorPreservesRawCsvLine:Pipeline.ParseErrorDoesNotBecomeEof
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 2/2 通过，ASan 零报告；Release 与 Debug 全量回归均为 33/33。测试对 `raw_line` 的字节长度和内容进行了精确相等比较。
+
+### Git 证据
+
+Git 标签：`part-a-a12-raw-line`。

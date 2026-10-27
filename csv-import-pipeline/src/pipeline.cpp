@@ -56,7 +56,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 
 			RowError rowError;
 			rowError.line_number = parser.lineNumber();
-			rowError.raw_line = "(parse error, raw line unavailable)";
+			parser.getRawLine(rowError.raw_line);
 			CellError cellError;
 			cellError.code = ErrorCode::ParseError;
 			cellError.message = message.str();
@@ -79,14 +79,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 
 			RowError rowError;
 			rowError.line_number = parser.lineNumber();
-			std::ostringstream rawLine;
-			for (size_t index = 0; index < row.size(); ++index)
-			{
-				if (index > 0)
-					rawLine << ',';
-				rawLine << row[index];
-			}
-			rowError.raw_line = rawLine.str();
+			parser.getRawLine(rowError.raw_line);
 
 			CellError cellError;
 			cellError.code = ErrorCode::ColumnCountMismatch;
@@ -99,7 +92,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 		}
 
         // ---- 校验与收集 ----
-        validateAndCollect(row, parser.lineNumber(), result);
+        validateAndCollect(row, parser.lineNumber(), parser, result);
     }
 
     // 后处理
@@ -119,7 +112,9 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 // validateAndCollect
 // ============================================================
 
-void ImportPipeline::validateAndCollect(Row& row, std::uint64_t line_number, Result& result) {
+void ImportPipeline::validateAndCollect(Row &row, std::uint64_t lineNumber,
+	const CsvParser &parser, Result &result)
+{
     try {
         auto cell_errors = validator_.validate(row);
 
@@ -133,14 +128,8 @@ void ImportPipeline::validateAndCollect(Row& row, std::uint64_t line_number, Res
         if (cfg_.skip_bad_rows) {
             // 跳过坏行模式：记录错误但不中断
             RowError row_err;
-            row_err.line_number = line_number;
-
-            std::ostringstream oss;
-            for (size_t i = 0; i < row.size(); ++i) {
-                if (i > 0) oss << ",";
-                oss << row[i];
-            }
-            row_err.raw_line = oss.str();
+            row_err.line_number = lineNumber;
+			parser.getRawLine(row_err.raw_line);
 
             row_err.cell_errors = std::move(cell_errors);
 
@@ -151,14 +140,8 @@ void ImportPipeline::validateAndCollect(Row& row, std::uint64_t line_number, Res
         } else {
             // 非跳过模式：遇到错误立即失败
             RowError row_err;
-            row_err.line_number = line_number;
-
-            std::ostringstream oss;
-            for (size_t i = 0; i < row.size(); ++i) {
-                if (i > 0) oss << ",";
-                oss << row[i];
-            }
-            row_err.raw_line = oss.str();
+            row_err.line_number = lineNumber;
+			parser.getRawLine(row_err.raw_line);
             row_err.cell_errors = std::move(cell_errors);
             result.errors.push_back(std::move(row_err));
 
@@ -170,7 +153,7 @@ void ImportPipeline::validateAndCollect(Row& row, std::uint64_t line_number, Res
         }
         // skip_bad_rows 模式下记录但继续
         RowError row_err;
-        row_err.line_number = line_number;
+        row_err.line_number = lineNumber;
         row_err.raw_line = "(exception occurred, raw line unavailable)";
         ++result.rows_skipped;
     }

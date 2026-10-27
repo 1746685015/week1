@@ -48,6 +48,7 @@ public:
 
 	std::uint64_t lineNumber() const;
 	std::size_t bytesRead() const;
+	void getRawLine(std::string &rawLine) const;
 
 	const std::string &lastError() const
 	{
