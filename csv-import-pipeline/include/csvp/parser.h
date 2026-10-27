@@ -68,6 +68,7 @@ private:
 	std::vector<std::string> m_header;
 	std::uint64_t m_lineNumber = 0;
 	std::size_t m_bytesRead = 0;
+	bool m_lineEndedWithNewline = false;
 	bool m_headerParsed = false;
 };
 

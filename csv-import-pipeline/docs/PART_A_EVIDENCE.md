@@ -330,3 +330,35 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a8-quoted-fields`。
+
+## A-9：CRLF/LF 混用时错误删除字段中的回车符
+
+### 复现与样本审计
+
+旧 `readRow()` 只要发现行缓冲最后一个字节为 `\r` 就无条件删除，无法区分它是 CRLF 行结束符的一部分，还是无末尾换行时字段本身的最后一个字节。
+
+同时，仓库原 `sample_crlf.csv` 经十六进制检查只有 `0A`，没有任何 `0D` 字节；原关闭测试声称第二行包含 `has_cr\r`，但样本实际只有 `has_cr\n`。因此该样本不能作为 CRLF 验收证据，测试预期也与真实字节不一致。
+
+### 修复
+
+- 读取一行时记录是否确实遇到了 `\n`。
+- 只有“本行由 `\n` 结束且 `\n` 前一字节是 `\r`”时才删除该 `\r`。
+- EOF 前没有 `\n` 的独立末尾 `\r` 保留为字段内容；引号字段内部的 `\r` 同样原样保留。
+- 将原测试替换为运行时按二进制写入的精确样本，覆盖 CRLF 表头、纯 LF 数据行、CRLF 数据行、引号字段内部 CR，以及无末尾换行且以 CR 结束的最后一行。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.CRLFLFMixedCR
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.CRLFLFMixedCR
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.CRLFLFMixedCR
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+build-review-asan-msvc/Debug/csvp_tests.exe
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 1/1 通过；Release 与 Debug 全量回归均为 30/30，ASan Debug 全量回归为 30/30 且零报告。Part A 相关关闭测试已全部启用，当前仅 Part B 的 `Concurrent.DISABLED_ShutdownNoDeadlock` 保持关闭。
+
+### Git 证据
+
+Git 标签：`part-a-a9-line-endings`。

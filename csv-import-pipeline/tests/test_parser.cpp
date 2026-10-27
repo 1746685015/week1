@@ -323,23 +323,46 @@ TEST(Parser, RejectsMalformedQuotes)
 }
 
 // ============================================================
-// Parser.DISABLED_CRLFLFMixedCR
+// Parser.CRLFLFMixedCR
 // 现象见 docs/KNOWN_ISSUES.md #10。修复后去掉前缀 DISABLED_ 启用验证。
 // ============================================================
-TEST(Parser, DISABLED_CRLFLFMixedCR) {
-    csvp::CsvParser::Config cfg;
-    cfg.has_header = true;
-    csvp::CsvParser parser(cfg);
-    ASSERT_TRUE(parser.parse(dataPath("sample_crlf.csv").c_str()));
+TEST(Parser, CRLFLFMixedCR)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_mixed_line_endings_" + std::to_string(uniqueValue) + ".csv");
+	const std::string content = "id,name,note\r\n"
+		"1,alice,lf-only\n"
+		"2,bob,\"has\rcr\"\r\n"
+		"3,carol,final-cr\r";
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output.write(content.data(), static_cast<std::streamsize>(content.size()));
+	}
 
-    csvp::Row row;
-    // row1: 1,alice,desc
-    ASSERT_TRUE(parser.readRow(row));
-    EXPECT_EQ(row[2], "desc");
+	{
+		csvp::CsvParser parser;
+		ASSERT_TRUE(parser.parse(path.string().c_str()));
+		ASSERT_EQ(parser.header().size(), 3U);
+		EXPECT_EQ(parser.header()[2], "note");
 
-    // row2: 2,bob,has_cr\r
-    ASSERT_TRUE(parser.readRow(row));
-    EXPECT_EQ(row[2], "has_cr\r");
+		csvp::Row row;
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 3U);
+		EXPECT_EQ(row[2], "lf-only");
+
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 3U);
+		EXPECT_EQ(row[2], std::string("has\rcr", 6U));
+
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 3U);
+		EXPECT_EQ(row[2], std::string("final-cr\r", 9U));
+		EXPECT_FALSE(parser.readRow(row));
+		EXPECT_EQ(parser.bytesRead(), content.size());
+	}
+	std::filesystem::remove(path);
 }
 
 } // anonymous namespace

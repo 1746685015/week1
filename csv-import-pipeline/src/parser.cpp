@@ -56,6 +56,7 @@ bool CsvParser::parse(const char *filepath)
 	m_header.clear();
 	m_lineNumber = 0;
 	m_bytesRead = 0;
+	m_lineEndedWithNewline = false;
 	m_headerParsed = false;
 	if (!EqualsIgnoringCase(m_config.encoding, "UTF-8")
 		&& !EqualsIgnoringCase(m_config.encoding, "UTF8")
@@ -106,7 +107,7 @@ bool CsvParser::readRow(Row &row)
 	if (!readLineFromFile())
 		return false;
 
-	if (!m_lineBuffer.empty() && m_lineBuffer.back() == '\r')
+	if (m_lineEndedWithNewline && !m_lineBuffer.empty() && m_lineBuffer.back() == '\r')
 		m_lineBuffer.pop_back();
 
 	if (m_lineBuffer.empty())
@@ -128,6 +129,7 @@ bool CsvParser::readRow(Row &row)
 bool CsvParser::readLineFromFile()
 {
 	m_lineBuffer.clear();
+	m_lineEndedWithNewline = false;
 	while (true)
 	{
 		if (m_readPosition >= m_readSize)
@@ -164,6 +166,7 @@ bool CsvParser::readLineFromFile()
 		{
 			++m_readPosition;
 			++m_bytesRead;
+			m_lineEndedWithNewline = true;
 			return true;
 		}
 	}
