@@ -665,3 +665,32 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a19-iterative-empty-lines`。
+
+## A-20：各列的 `trim_spaces` 行为不一致
+
+### 审计结论
+
+旧实现只在整行结束时修剪当前字段，遇到分隔符就直接追加，因此首列和中间列可能保留尾随空格，而末列被修剪。A-8 重写“每次完整解析一个字段”的循环时已为每个未引用字段统一执行首尾 trim，但当时没有独立覆盖本项契约。
+
+### 回归保障
+
+- 新增首列、中间列和末列测试，同时覆盖空格与 Tab。
+- `trim_spaces=true` 时所有未引用字段统一修剪。
+- 引号字段内部的首尾空格和 Tab 原样保留；关闭引号后的配置性空白被忽略。
+- `trim_spaces=false` 时普通字段的首尾空格和 Tab 逐字节保留。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.TrimsEveryUnquotedFieldOnlyWhenEnabled
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.TrimsEveryUnquotedFieldOnlyWhenEnabled
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.TrimsEveryUnquotedFieldOnlyWhenEnabled
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 1/1 通过，ASan 零报告；Release 与 Debug 全量回归均为 45/45。
+
+### Git 证据
+
+Git 标签：`part-a-a20-consistent-trim`。

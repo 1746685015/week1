@@ -383,6 +383,53 @@ TEST(Parser, QuotedFieldBoundaries)
 	std::filesystem::remove(path);
 }
 
+TEST(Parser, TrimsEveryUnquotedFieldOnlyWhenEnabled)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_trim_fields_" + std::to_string(uniqueValue) + ".csv");
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "  first  ,\tsecond\t, third \n"
+			<< "\"  inside  \", \"\tkept\t\" \n";
+	}
+
+	csvp::CsvParser::Config trimConfig;
+	trimConfig.has_header = false;
+	trimConfig.trim_spaces = true;
+	{
+		csvp::CsvParser parser(trimConfig);
+		ASSERT_TRUE(parser.parse(path.string().c_str()));
+		csvp::Row row;
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 3U);
+		EXPECT_EQ(row[0], "first");
+		EXPECT_EQ(row[1], "second");
+		EXPECT_EQ(row[2], "third");
+
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 2U);
+		EXPECT_EQ(row[0], "  inside  ");
+		EXPECT_EQ(row[1], "\tkept\t");
+	}
+
+	csvp::CsvParser::Config preserveConfig;
+	preserveConfig.has_header = false;
+	preserveConfig.trim_spaces = false;
+	{
+		csvp::CsvParser parser(preserveConfig);
+		ASSERT_TRUE(parser.parse(path.string().c_str()));
+		csvp::Row row;
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 3U);
+		EXPECT_EQ(row[0], "  first  ");
+		EXPECT_EQ(row[1], "\tsecond\t");
+		EXPECT_EQ(row[2], " third ");
+	}
+	std::filesystem::remove(path);
+}
+
 TEST(Parser, RejectsMalformedQuotes)
 {
 	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
