@@ -8,7 +8,7 @@
 - 可配置的字段校验（类型、范围、正则、必填）
 - 坏行跳过与错误收集
 - 同步导入模式
-- 流式导入模式（待实现）
+- 后台流式导入、每 1000 行进度回调、协作取消与超时停止
 
 ## 代码架构
 
@@ -45,7 +45,7 @@
 |---|---|---|---|
 | 基础类型 | `include/csvp/types.h` | `ErrorCode`、`FieldType`、`FieldRule`、`CellError`、`RowError`、`Stats` 这些纯数据结构 | 无 |
 | 行容器 | `include/csvp/row.h` | `Row`：一行数据的字段列表，提供 `toInt/toDouble/toBool/toString` 类型访问器 | types.h |
-| 解析器 | `include/csvp/parser.h` + `src/parser.cpp` | `CsvParser`：`parse()` 打开文件、`readRow()` 逐行解析；内部行缓冲区为手动内存管理（malloc/free） | types.h、row.h |
+| 解析器 | `include/csvp/parser.h` + `src/parser.cpp` | `CsvParser`：`parse()` 打开文件、`readNext()` 以三态结果逐行解析；使用固定 64 KiB 输入缓冲 | types.h、row.h |
 | 校验器 | `include/csvp/validator.h` + `src/validator.cpp` | `FieldValidator`：规则由外部注入（`addRule/addRules`），`validate()` 校验一整行、`validateField()` 校验单个字段 | types.h、row.h |
 | 管道 | `include/csvp/pipeline.h` + `src/pipeline.cpp` | `ImportPipeline`：顶层编排，组合 Parser + Validator，输出 `Result` 和 `Stats` | 上面全部 |
 
@@ -55,12 +55,12 @@
 
 **`src/parser.cpp` —— 解析器实现**
 
-- `parse()`：关闭上一个打开的文件、以二进制方式打开新文件、分配行缓冲区、重置表头与读取偏移，然后按 `has_header` 读入表头；
-- `readRow()`：把下一行读进来，处理行尾、跳过空行，再调用字段切分，成功后行号加一；
+- `parse()`：关闭上一个打开的文件、以二进制方式打开新文件、重置表头与读取偏移，然后按 `has_header` 读入表头；
+- `readNext()`：把下一行读进来，区分成功、EOF 和解析错误，处理行尾、跳过空行，再调用字段切分；
 - `readLineFromFile()`：根据当前文件偏移把下一行读入缓冲区，同时更新偏移量和已读字节数（`bytesRead()` 的数据来源）；
 - `splitLineToFields()` / `handleQuotedField()`：按 `delimiter` 切分普通字段和引号字段，`trim_spaces` 开启时修剪字段前后的空格；
 - `isTrailingByte()`：按字节范围判断多字节字符的后续字节，供编码相关逻辑使用；
-- 析构函数负责关闭文件和释放行缓冲区（`malloc/free` 手动管理）。
+- 析构函数负责关闭文件；输入缓冲由 `std::array` 自动管理，超长行由有上限的字符串缓冲处理。
 
 **`src/validator.cpp` —— 校验器实现**
 
@@ -74,9 +74,10 @@
 **`src/pipeline.cpp` —— 管道实现**
 
 - 构造函数：保存 `Config` 和规则列表，并把规则交给内部的 `FieldValidator`；
-- `importSync()`：建解析器 → `parse()` 打开文件 → 循环 `readRow()` → 列数检查 → 交给 `validateAndCollect()` → 结束后填写 `Result` 和 `Stats`（行数、字节数、耗时）；
+- `importSync()`：预约实例任务状态 → 复用导入核心 → 列数检查和字段校验 → 结束后填写 `Result` 和 `Stats`；
 - `validateAndCollect()`：校验通过则 `rows_imported++`；失败则组装 `RowError`（行号、整行、`CellError` 列表），按 `skip_bad_rows` 决定记录后继续还是终止；错误列表受 `error_limit` 约束（0 表示不限）；
-- `importStreaming()` / `shutdown()`：目前是骨架，函数体里的 TODO 注释写明了 Part B 要满足的接口契约，返回值是已完成部分的 `future`；
+- `importStreaming()`：复制路径和 callback 后启动受管 worker；结果或异常通过 `std::future` 交付，进度每 1000 行报告一次，callback 返回 `false` 时返回部分结果；
+- `shutdown()`：发布停止信号并通过条件变量最多等待指定时长；超时后立即返回，`pendingCount()` 可读取尚未完成的后台任务数；
 - `stats()`：返回统计快照，流式实现后由原子计数器提供实时进度。
 
 ### 一行数据的生命周期
@@ -92,9 +93,10 @@
 
 ### 并发模型
 
-- `importSync`：在调用方线程上同步执行，跑完才返回，当前已实现；
-- `importStreaming` / `shutdown`：Part B 的待实现部分。接口契约已定死在 `pipeline.h`（后台线程干活、`progress` 回调每 1000 行报一次、`stop_requested_` 停止标志、结果走 `std::future`），配套的三个原子计数器（`hot_total_lines_` 等）也已预留，供实现后 `stats()` 反映实时进度；
-- `stats()`：返回统计快照。同步路径读普通成员，流式路径读原子计数器。
+- `importSync`：在调用方线程上同步执行，跑完才返回；同一实例已有任务时会明确拒绝并发启动。
+- `importStreaming`：解析和校验都在成员 worker 线程执行；worker 不 detach，由下一次启动或析构函数负责 join。
+- `shutdown`：仅协作通知流式 worker；callback 可读取状态或请求停止，不持有内部状态锁调用用户代码。
+- `stats()`：从原子计数器返回实时统计快照；同步与流式任务共享同一组统计，因此同一实例一次只允许一个导入任务。
 
 ### 构建产物
 
@@ -140,6 +142,7 @@ build/Release/csvp_bench.exe data/sample_100k.csv 3 data/sample_100k_report.txt
 
 # 报告内容：rows_imported / rows_skipped / 错误行明细（含列号、原始值、错误码）
 # 大文件压测后直接打开 txt 报告即可直观核对，无需从刷屏的 cout 里翻找。
+```
 
 ## API 速览
 
@@ -181,7 +184,7 @@ std::cout << "Imported: " << result.rows_imported
 
 > 本仓库最初有意保留了若干缺陷。Part A 的修复过程、回归用例和验证结果记录在 [docs/PART_A_EVIDENCE.md](docs/PART_A_EVIDENCE.md)。
 >
-> Part A 的回归用例均已启用；当前保留的 `DISABLED_` 用例属于尚未实现的 Part B 验收项。
+> Part A 与 Part B 的回归用例均已启用；Part B 的实现、测试和提交证据记录在 [docs/PART_B_EVIDENCE.md](docs/PART_B_EVIDENCE.md)。
 
 ## 目录结构
 
@@ -192,6 +195,7 @@ csv-import-pipeline/
 ├── README.md
 ├── docs/
 │   ├── PART_A_EVIDENCE.md      # Part A 修复与验证证据
+│   ├── PART_B_EVIDENCE.md      # Part B 线程、停止与验证证据
 │   └── REPORT_TEMPLATE.md      # 交付报告模板
 ├── include/csvp/
 │   ├── parser.h          # CSV 解析器

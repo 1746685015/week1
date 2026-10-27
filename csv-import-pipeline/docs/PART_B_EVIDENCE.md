@@ -272,3 +272,39 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 提交信息：`test: cover streaming worker lifecycle`。
 
 标签：`part-b-b7-worker-lifecycle`。
+
+## B8：最终回归与交付材料
+
+### 交付更新
+
+- README 已从“Part B 待实现”更新为实际线程模型、停止行为、future 和 pending 契约。
+- `docs/REPORT_TEMPLATE.md` 已填写 Part B 设计思路、线程模型、取消/超时机制与验证摘要。
+- 原始作业 PDF 保持不变；本文件继续保存每个小步的命令、结果、提交和标签。
+
+### 最终验收命令
+
+```powershell
+cmake --build build-review-baseline --config Release
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+cmake --build build-review-baseline --config Debug
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+build-review-baseline/Release/csvp_tests.exe --gtest_repeat=100 --gtest_shuffle
+clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+cmake --build build-review-asan-msvc --config Debug
+build-review-asan-msvc/Debug/csvp_tests.exe
+```
+
+最终验收结果（2026-10-28，Asia/Shanghai）：
+
+- MSVC 2022 x64 Release：构建退出码 0、编译告警 0；ctest 61/61 通过。
+- MSVC 2022 x64 Debug：构建退出码 0、编译告警 0；ctest 61/61 通过。
+- Release 随机顺序压力复跑：`--gtest_repeat=100 --gtest_shuffle` 退出码 0；100/100 轮通过，每轮 61 项，共执行 6100 项测试，失败 0。
+- clang-tidy：退出码 0；项目代码可见告警 0、错误 0；工具另报告 135 个系统/第三方告警被抑制，以及 1 个有理由的精确 `NOLINT`。
+- MSVC AddressSanitizer Debug：重新构建退出码 0；链接器提示 ASan 元数据使 `/INCREMENTAL` 被忽略，不是编译器代码告警；测试退出码 0，61/61 通过，AddressSanitizer 错误 0。
+- README Markdown 围栏同时复核并修正，API 和目录说明不再被误渲染为 shell 代码块。
+
+### Git 证据
+
+提交信息：`docs: record Part B verification evidence`。
+
+标签：`part-b-acceptance`。
