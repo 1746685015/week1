@@ -105,6 +105,51 @@ TEST(Concurrent, StatsAtomicRead) {
               << s.total_lines << std::endl;
 }
 
+TEST(Concurrent, SyncImportStatsMatchResult)
+{
+	ImportPipeline::Config config;
+	ImportPipeline pipeline(config, makeDefaultRules());
+	const ImportPipeline::Result result = pipeline.importSync(dataPath("sample_utf8.csv").c_str());
+	const Stats statistics = pipeline.stats();
+
+	EXPECT_EQ(statistics.total_lines, 10U);
+	EXPECT_EQ(statistics.bytes_read, 236U);
+	EXPECT_EQ(statistics.rows_imported, result.rows_imported);
+	EXPECT_EQ(statistics.rows_skipped, result.rows_skipped);
+	EXPECT_DOUBLE_EQ(statistics.elapsed_ms, result.elapsed_ms);
+}
+
+TEST(Concurrent, ReadsStatsDuringSyncImport)
+{
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	ImportPipeline pipeline(config, makeDefaultRules());
+	ImportPipeline::Result result;
+	std::atomic<bool> done = false;
+	std::thread worker([&pipeline, &result, &done]()
+	{
+		result = pipeline.importSync(dataPath("sample_100k.csv").c_str());
+		done.store(true, std::memory_order_release);
+	});
+
+	std::size_t previousTotalLines = 0;
+	while (!done.load(std::memory_order_acquire))
+	{
+		const Stats statistics = pipeline.stats();
+		EXPECT_GE(statistics.total_lines, previousTotalLines);
+		previousTotalLines = statistics.total_lines;
+		std::this_thread::yield();
+	}
+	worker.join();
+
+	const Stats finalStatistics = pipeline.stats();
+	EXPECT_EQ(finalStatistics.total_lines, 100000U);
+	EXPECT_EQ(finalStatistics.rows_imported, result.rows_imported);
+	EXPECT_EQ(finalStatistics.rows_skipped, result.rows_skipped);
+	EXPECT_EQ(result.rows_imported, 98000U);
+	EXPECT_EQ(result.rows_skipped, 2000U);
+}
+
 // ============================================================
 // Concurrent.DISABLED_ShutdownNoDeadlock（Part B 验收）
 // 把 importStreaming 和 shutdown 写完之后，去掉 DISABLED_ 前缀启用本用例。

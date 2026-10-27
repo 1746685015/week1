@@ -541,3 +541,35 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a15-traceable-errors`。
+
+## A-16：同步导入统计错误且 `stats()` 存在数据竞争
+
+### 复现与根因
+
+`importSync()` 原来更新普通成员 `stats_`，但 `stats()` 随后用从未由同步导入更新的 `hot_*` 原子计数覆盖行数，导致同步导入成功后查询仍返回 0。同时，一个线程写普通 `stats_`、另一个线程复制它属于无同步读写，存在数据竞争。
+
+### 修复
+
+- 删除共享的普通 `Stats` 对象，行数、字节数、导入数、跳过数和耗时分别使用原子成员保存。
+- 同步导入开始时重置全部统计；每处理一行实时更新行数、字节数及结果计数。
+- 文件打开失败、schema 失败和正常完成路径都更新耗时及适用统计。
+- `stats()` 只读取原子成员，不再复制正在被另一线程修改的普通对象。
+- 新增同步结果一致性测试，以及导入 10 万行期间并发轮询统计的测试。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Concurrent.SyncImportStatsMatchResult:Concurrent.ReadsStatsDuringSyncImport
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Concurrent.SyncImportStatsMatchResult:Concurrent.ReadsStatsDuringSyncImport
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Concurrent.SyncImportStatsMatchResult:Concurrent.ReadsStatsDuringSyncImport
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 2/2 通过，ASan 零报告；Release 与 Debug 全量回归均为 40/40。10 万行测试最终统计为 100,000 行、98,000 行导入、2,000 行跳过，并发读取期间总行数保持单调。
+
+限制：Windows/MSVC 当前构建链不提供 ThreadSanitizer，本项使用原子实现审查、并发压力测试和 ASan 内存检查验证，未声称执行过 TSan。
+
+### Git 证据
+
+Git 标签：`part-a-a16-atomic-stats`。

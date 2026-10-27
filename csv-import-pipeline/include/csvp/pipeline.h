@@ -74,17 +74,16 @@ private:
     std::vector<FieldRule> rules_;
     FieldValidator validator_;
 
-    // ---- 热路径统计计数器 ----
-    // 供 importStreaming 的后台线程在每行处理时递增。
-    std::atomic<size_t> hot_total_lines_ = 0;
-    std::atomic<size_t> hot_rows_imported_ = 0;
-    std::atomic<size_t> hot_rows_skipped_ = 0;
+	std::atomic<std::size_t> m_totalLines = 0;
+	std::atomic<std::size_t> m_bytesRead = 0;
+	std::atomic<std::size_t> m_rowsImported = 0;
+	std::atomic<std::size_t> m_rowsSkipped = 0;
+	std::atomic<double> m_elapsedMilliseconds = 0.0;
 
     // ---- 停止标志 ----
     std::atomic<bool> stop_requested_ = false;
     size_t pending_count_ = 0;  // shutdown 超时后的未完成任务数
 
-    Stats stats_;
     bool streaming_active_ = false;
 };
 

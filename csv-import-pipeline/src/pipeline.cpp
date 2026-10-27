@@ -18,6 +18,11 @@ ImportPipeline::ImportPipeline(const Config& cfg, std::vector<FieldRule> rules)
 ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
     Result result;
     auto t0 = std::chrono::steady_clock::now();
+	m_totalLines.store(0, std::memory_order_relaxed);
+	m_bytesRead.store(0, std::memory_order_relaxed);
+	m_rowsImported.store(0, std::memory_order_relaxed);
+	m_rowsSkipped.store(0, std::memory_order_relaxed);
+	m_elapsedMilliseconds.store(0.0, std::memory_order_relaxed);
 
     CsvParser parser(cfg_.parser);
     if (!parser.parse(filepath)) {
@@ -26,14 +31,11 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
         fatal.line_number = 0;
         fatal.raw_line = parser.lastError();
         result.errors.push_back(std::move(fatal));
+		const auto finishTime = std::chrono::steady_clock::now();
+		result.elapsed_ms = std::chrono::duration<double, std::milli>(finishTime - t0).count();
+		m_elapsedMilliseconds.store(result.elapsed_ms, std::memory_order_relaxed);
         return result;
     }
-
-    stats_.total_lines = 0;
-    stats_.bytes_read = 0;
-    stats_.rows_imported = 0;
-    stats_.rows_skipped = 0;
-    stats_.elapsed_ms = 0;
 
 	const std::size_t expectedColumnCount = cfg_.parser.has_header
 		? parser.header().size()
@@ -51,10 +53,10 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 		cellError.message = message.str();
 		schemaError.cell_errors.push_back(std::move(cellError));
 		result.errors.push_back(std::move(schemaError));
-		stats_.bytes_read = parser.bytesRead();
+		m_bytesRead.store(parser.bytesRead(), std::memory_order_relaxed);
 		const auto finishTime = std::chrono::steady_clock::now();
 		result.elapsed_ms = std::chrono::duration<double, std::milli>(finishTime - t0).count();
-		stats_.elapsed_ms = result.elapsed_ms;
+		m_elapsedMilliseconds.store(result.elapsed_ms, std::memory_order_relaxed);
 		return result;
 	}
 
@@ -65,7 +67,8 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 		if (readStatus == CsvParser::ReadStatus::EofReadStatus)
 			break;
 
-        ++stats_.total_lines;
+		m_totalLines.fetch_add(1, std::memory_order_relaxed);
+		m_bytesRead.store(parser.bytesRead(), std::memory_order_relaxed);
 		if (readStatus == CsvParser::ReadStatus::ErrorReadStatus)
 		{
 			std::ostringstream message;
@@ -84,6 +87,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 			if (cfg_.error_limit == 0 || result.errors.size() < cfg_.error_limit)
 				result.errors.push_back(std::move(rowError));
 			++result.rows_skipped;
+			m_rowsSkipped.store(result.rows_skipped, std::memory_order_relaxed);
 			continue;
 		}
 
@@ -108,22 +112,23 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 			if (cfg_.error_limit == 0 || result.errors.size() < cfg_.error_limit)
 				result.errors.push_back(std::move(rowError));
 			++result.rows_skipped;
+			m_rowsSkipped.store(result.rows_skipped, std::memory_order_relaxed);
 			continue;
 		}
 
         // ---- 校验与收集 ----
         validateAndCollect(row, parser.lineNumber(), parser, result);
+		m_rowsImported.store(result.rows_imported, std::memory_order_relaxed);
+		m_rowsSkipped.store(result.rows_skipped, std::memory_order_relaxed);
     }
 
     // 后处理
-    stats_.bytes_read = parser.bytesRead();
-    stats_.rows_imported = result.rows_imported;
-    stats_.rows_skipped = result.rows_skipped;
+	m_bytesRead.store(parser.bytesRead(), std::memory_order_relaxed);
 
     auto t1 = std::chrono::steady_clock::now();
     result.elapsed_ms =
         std::chrono::duration<double, std::milli>(t1 - t0).count();
-    stats_.elapsed_ms = result.elapsed_ms;
+	m_elapsedMilliseconds.store(result.elapsed_ms, std::memory_order_relaxed);
 
     return result;
 }
@@ -190,8 +195,7 @@ std::future<ImportPipeline::Result> ImportPipeline::importStreaming(
     //    检查的时机自己把握，但别等到整个文件读完才看一眼。
     // 4. 最终结果放进返回的 future 里。就算中途被叫停也没关系，
     //    把已经处理完的那部分结果交出去即可，不要抛异常。
-    // 5. 每处理一行，顺手把 hot_total_lines_、hot_rows_imported_、
-    //    hot_rows_skipped_ 这几个原子计数器加上去，stats() 靠它们反映实时进度。
+    // 5. 每处理一行，更新原子统计计数器，stats() 靠它们反映实时进度。
 
     std::promise<Result> promise;
     promise.set_value(Result{});  // 占位：返回空结果
@@ -219,12 +223,15 @@ void ImportPipeline::shutdown(std::chrono::milliseconds /*timeout*/) {
 // stats
 // ============================================================
 
-Stats ImportPipeline::stats() const {
-    Stats s = stats_;
-    s.total_lines = hot_total_lines_.load(std::memory_order_relaxed);
-    s.rows_imported = hot_rows_imported_.load(std::memory_order_relaxed);
-    s.rows_skipped = hot_rows_skipped_.load(std::memory_order_relaxed);
-    return s;
+Stats ImportPipeline::stats() const
+{
+	Stats statistics;
+	statistics.total_lines = m_totalLines.load(std::memory_order_relaxed);
+	statistics.bytes_read = m_bytesRead.load(std::memory_order_relaxed);
+	statistics.rows_imported = m_rowsImported.load(std::memory_order_relaxed);
+	statistics.rows_skipped = m_rowsSkipped.load(std::memory_order_relaxed);
+	statistics.elapsed_ms = m_elapsedMilliseconds.load(std::memory_order_relaxed);
+	return statistics;
 }
 
 } // namespace csvp
