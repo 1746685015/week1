@@ -86,6 +86,9 @@ if(BUILD_BENCH)
     add_executable(csvp_bench bench/bench_import.cpp)
     target_link_libraries(csvp_bench PRIVATE csvp)
 
+    add_executable(csvp_large_verify bench/verify_large_import.cpp)
+    target_link_libraries(csvp_large_verify PRIVATE csvp)
+
 
     # 默认运行参数：csvp_bench sample_utf8.csv 3 output.txt
     # 直接使用源码目录下的 data，避免把大文件拷到编译目录。
@@ -100,7 +103,9 @@ if(BUILD_BENCH)
     #   "error D8016: /O2 和 /RTC1 命令行选项不兼容"
     if(MSVC)
         target_compile_options(csvp_bench PRIVATE /utf-8 /permissive- /EHsc /W4)
+        target_compile_options(csvp_large_verify PRIVATE /utf-8 /permissive- /EHsc /W4)
     else()
         target_compile_options(csvp_bench PRIVATE)
+        target_compile_options(csvp_large_verify PRIVATE)
     endif()
 endif()

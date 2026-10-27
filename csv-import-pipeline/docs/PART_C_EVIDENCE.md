@@ -81,3 +81,29 @@ tools/run_benchmark_with_memory.ps1 `
 提交信息：`test: record Part C dataset and baseline`。
 
 标签：`part-c-c0-baseline`。
+
+## C1：大文件完整性验收
+
+### 验收工具
+
+- 新增独立目标 `csvp_large_verify`，不注册为日常 ctest，避免每次单元测试都读取 1 GB。
+- 工具使用生产 `ImportPipeline` 和与 bench 相同的 5 列规则；验证 imported、skipped、总分类数、错误对象总数与最终 stats。
+- 精确核对第 1、第 5000、第 10000 条错误的物理行号、完整原始行、age 列索引/名称/原值和错误码，覆盖文件前部、中部与末尾。
+- 输入不存在的处理已由 `Pipeline.MissingFile` 与 `Pipeline.StreamingMissingFile` 回归测试覆盖；错误日志失败将在 C2 引入 sink 后增加确定性测试。
+
+### 验证命令
+
+```powershell
+cmake --build build-review-baseline --config Release
+build-review-baseline/Release/csvp_large_verify.exe data/sample_1gb.csv
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+实测结果：Release 目标构建退出码 0、C++ 编译警告 0；`csvp_large_verify` 退出码 0，输出 imported=9,990,000、skipped=10,000、errors=10,000、total_lines=10,000,000，耗时 19,766.9 ms，并输出 `LARGE_IMPORT_INTEGRITY_PASS`。Release/Debug 日常全量回归均为 61/61 通过。原始摘要保存为 `docs/evidence/part_c_c1_integrity.txt`。
+
+### Git 证据
+
+提交信息：`test: add large-file integrity assertions`。
+
+标签：`part-c-c1-integrity`。

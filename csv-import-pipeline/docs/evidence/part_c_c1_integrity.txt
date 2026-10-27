@@ -1,0 +1,17 @@
+Part C C1 Large Import Integrity Verification
+==============================================
+
+Command:
+build-review-baseline/Release/csvp_large_verify.exe data/sample_1gb.csv
+
+Git base: c8e06f7de711aa4e91ae2ac1ec2fa712e2eaab83
+Configuration: MSVC 2022 x64 Release
+Exit code: 0
+
+imported=9990000 skipped=10000 errors=10000 total_lines=10000000 elapsed_ms=19766.9
+LARGE_IMPORT_INTEGRITY_PASS
+
+Additional regression:
+- Release ctest: 61/61 passed, 0 failed.
+- Debug ctest: 61/61 passed, 0 failed.
+- Release and Debug builds: no C++ compiler warnings.
