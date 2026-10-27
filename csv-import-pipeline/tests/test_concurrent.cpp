@@ -10,6 +10,7 @@
 #include <future>
 #include <iostream>
 #include <mutex>
+#include <stdexcept>
 #include <vector>
 
 namespace {
@@ -221,6 +222,133 @@ TEST(Concurrent, ReadsStatsDuringSyncImport)
 	EXPECT_EQ(finalStatistics.rows_skipped, result.rows_skipped);
 	EXPECT_EQ(result.rows_imported, 98000U);
 	EXPECT_EQ(result.rows_skipped, 2000U);
+}
+
+TEST(Concurrent, StatsDuringStreamingImport)
+{
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	ImportPipeline pipeline(config, makeDefaultRules());
+	std::future<ImportPipeline::Result> future = pipeline.importStreaming(
+		dataPath("sample_100k.csv").c_str(),
+		[](std::size_t)
+		{
+			return true;
+		});
+	std::size_t previousTotalLines = 0;
+
+	while (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+	{
+		const Stats statistics = pipeline.stats();
+		EXPECT_GE(statistics.total_lines, previousTotalLines);
+		previousTotalLines = statistics.total_lines;
+		std::this_thread::yield();
+	}
+	const ImportPipeline::Result result = future.get();
+	const Stats statistics = pipeline.stats();
+
+	EXPECT_EQ(statistics.total_lines, 100000U);
+	EXPECT_EQ(statistics.rows_imported, result.rows_imported);
+	EXPECT_EQ(statistics.rows_skipped, result.rows_skipped);
+	EXPECT_DOUBLE_EQ(statistics.elapsed_ms, result.elapsed_ms);
+	EXPECT_EQ(pipeline.pendingCount(), 0U);
+}
+
+TEST(Concurrent, StreamingCallbackThrows)
+{
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	ImportPipeline pipeline(config, makeDefaultRules());
+	std::future<ImportPipeline::Result> future = pipeline.importStreaming(
+		dataPath("sample_100k.csv").c_str(),
+		[](std::size_t) -> bool
+		{
+			throw std::runtime_error("Progress callback failed");
+		});
+
+	EXPECT_THROW(future.get(), std::runtime_error);
+	EXPECT_EQ(pipeline.pendingCount(), 0U);
+}
+
+TEST(Concurrent, StrictModeBadRowMatchesSyncImport)
+{
+	ImportPipeline::Config config;
+	config.skip_bad_rows = false;
+	ImportPipeline syncPipeline(config, makeDefaultRules());
+	ImportPipeline streamingPipeline(config, makeDefaultRules());
+	std::string syncMessage;
+	std::string streamingMessage;
+
+	try
+	{
+		(void)syncPipeline.importSync(dataPath("sample_100k.csv").c_str());
+	}
+	catch (const std::runtime_error &error)
+	{
+		syncMessage = error.what();
+	}
+	std::future<ImportPipeline::Result> future = streamingPipeline.importStreaming(
+		dataPath("sample_100k.csv").c_str(),
+		[](std::size_t)
+		{
+			return true;
+		});
+	try
+	{
+		(void)future.get();
+	}
+	catch (const std::runtime_error &error)
+	{
+		streamingMessage = error.what();
+	}
+
+	EXPECT_FALSE(syncMessage.empty());
+	EXPECT_EQ(streamingMessage, syncMessage);
+	EXPECT_EQ(streamingPipeline.pendingCount(), 0U);
+}
+
+TEST(Concurrent, RejectsSyncImportWhileStreaming)
+{
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	ImportPipeline pipeline(config, makeDefaultRules());
+	std::mutex gateMutex;
+	std::condition_variable gateChanged;
+	bool callbackEntered = false;
+	bool releaseCallback = false;
+	std::future<ImportPipeline::Result> future = pipeline.importStreaming(
+		dataPath("sample_100k.csv").c_str(),
+		[&gateMutex, &gateChanged, &callbackEntered, &releaseCallback](std::size_t processed)
+		{
+			if (processed == 1000U)
+			{
+				std::unique_lock<std::mutex> gateLock(gateMutex);
+				callbackEntered = true;
+				gateChanged.notify_all();
+				gateChanged.wait(gateLock, [&releaseCallback]()
+				{
+					return releaseCallback;
+				});
+			}
+			return processed < 1000U;
+		});
+
+	{
+		std::unique_lock<std::mutex> gateLock(gateMutex);
+		ASSERT_TRUE(gateChanged.wait_for(gateLock, std::chrono::seconds(2),
+			[&callbackEntered]()
+			{
+				return callbackEntered;
+			}));
+	}
+	EXPECT_THROW((void)pipeline.importSync(dataPath("sample_utf8.csv").c_str()), std::logic_error);
+	{
+		std::lock_guard<std::mutex> gateLock(gateMutex);
+		releaseCallback = true;
+	}
+	gateChanged.notify_all();
+	EXPECT_NO_THROW((void)future.get());
+	EXPECT_EQ(pipeline.pendingCount(), 0U);
 }
 
 TEST(Concurrent, ShutdownNoDeadlock)

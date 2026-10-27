@@ -57,6 +57,7 @@ private:
 		const std::function<bool(std::size_t)> *progress);
 	void validateAndCollect(Row &row, std::uint64_t lineNumber, const CsvParser &parser,
 		Result &result);
+	void completeSynchronousTask();
 	void completeStreamingTask();
 	void joinWorker();
 
@@ -76,6 +77,7 @@ private:
 	std::condition_variable m_stateChanged;
 	std::thread m_worker;
 	std::size_t m_pendingCount = 0;
+	bool m_importActive = false;
 	bool m_streamingActive = false;
 };
 

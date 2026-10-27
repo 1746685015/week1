@@ -26,7 +26,33 @@ ImportPipeline::~ImportPipeline()
 
 ImportPipeline::Result ImportPipeline::importSync(const char *filepath)
 {
-	return runImport(filepath, nullptr);
+	std::unique_lock<std::mutex> lifecycleLock(m_lifecycleMutex);
+	{
+		std::lock_guard<std::mutex> stateLock(m_stateMutex);
+		if (m_importActive)
+			throw std::logic_error("An import is already active");
+	}
+	if (m_worker.joinable())
+		m_worker.join();
+
+	{
+		std::lock_guard<std::mutex> stateLock(m_stateMutex);
+		m_importActive = true;
+		m_stopRequested.store(false, std::memory_order_release);
+	}
+	lifecycleLock.unlock();
+
+	try
+	{
+		Result result = runImport(filepath, nullptr);
+		completeSynchronousTask();
+		return result;
+	}
+	catch (...)
+	{
+		completeSynchronousTask();
+		throw;
+	}
 }
 
 ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
@@ -212,14 +238,15 @@ std::future<ImportPipeline::Result> ImportPipeline::importStreaming(
 	std::unique_lock<std::mutex> lifecycleLock(m_lifecycleMutex);
 	{
 		std::lock_guard<std::mutex> stateLock(m_stateMutex);
-		if (m_streamingActive)
-			throw std::logic_error("A streaming import is already active");
+		if (m_importActive)
+			throw std::logic_error("An import is already active");
 	}
 	if (m_worker.joinable())
 		m_worker.join();
 
 	{
 		std::lock_guard<std::mutex> stateLock(m_stateMutex);
+		m_importActive = true;
 		m_streamingActive = true;
 		m_pendingCount = 1;
 		m_stopRequested.store(false, std::memory_order_release);
@@ -259,6 +286,11 @@ std::future<ImportPipeline::Result> ImportPipeline::importStreaming(
 void ImportPipeline::shutdown(std::chrono::milliseconds timeout)
 {
 	std::unique_lock<std::mutex> lifecycleLock(m_lifecycleMutex);
+	{
+		std::lock_guard<std::mutex> stateLock(m_stateMutex);
+		if (!m_streamingActive)
+			return;
+	}
 	m_stopRequested.store(true, std::memory_order_release);
 	if (m_worker.joinable() && m_worker.get_id() == std::this_thread::get_id())
 		return;
@@ -276,10 +308,20 @@ std::size_t ImportPipeline::pendingCount() const
 	return m_pendingCount;
 }
 
+void ImportPipeline::completeSynchronousTask()
+{
+	{
+		std::lock_guard<std::mutex> stateLock(m_stateMutex);
+		m_importActive = false;
+	}
+	m_stateChanged.notify_all();
+}
+
 void ImportPipeline::completeStreamingTask()
 {
 	{
 		std::lock_guard<std::mutex> stateLock(m_stateMutex);
+		m_importActive = false;
 		m_streamingActive = false;
 		m_pendingCount = 0;
 	}

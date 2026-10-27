@@ -215,3 +215,31 @@ clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++
 提交信息：`feat: implement timed shutdown and pending count`。
 
 标签：`part-b-b5-timed-shutdown`。
+
+## B6：并发统计、互斥与异常清理
+
+### 实现
+
+- 新增统一的 `m_importActive` 状态，同一实例的同步与流式导入共享互斥契约；冲突调用抛出 `std::logic_error`，避免同时重置或写入同一组统计。
+- 同步导入也使用异常安全的进入/退出路径，严格模式抛出后会清除活动状态；后续调用可以继续使用同一实例。
+- callback 和严格模式异常由 `std::packaged_task` 放入 future；worker 内部先完成状态清理，再把异常交付调用方。
+- `stats()` 继续只读原子计数器，callback 不在生命周期锁或状态锁内执行。
+- `shutdown()` 只通知流式 worker；空闲或仅同步导入时不会遗留停止标志影响后续同步任务。
+
+### 验证命令
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Concurrent.StatsDuringStreamingImport:Concurrent.StreamingCallbackThrows:Concurrent.StrictModeBadRowMatchesSyncImport:Concurrent.RejectsSyncImportWhileStreaming
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Concurrent.StatsDuringStreamingImport:Concurrent.StreamingCallbackThrows:Concurrent.StrictModeBadRowMatchesSyncImport:Concurrent.RejectsSyncImportWhileStreaming
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+```
+
+结果：Release/Debug 定向测试均为 4/4 通过；两种配置全量回归均为 56/56 通过、零失败，MSVC 构建无新增警告；clang-tidy 退出码 0，显示告警 0、错误 0。流式统计单调且最终与 Result 一致；callback 异常和严格模式坏行均可由 future 观察，pending 最终为 0；活动流式任务期间同步调用被明确拒绝。
+
+### Git 证据
+
+提交信息：`fix: make streaming cleanup exception-safe`。
+
+标签：`part-b-b6-exception-safety`。
