@@ -58,3 +58,40 @@ build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.UTF8Basic
 ### Git 证据
 
 Git 标签：`part-a-a0-asan-build`。
+
+## A-1：文件末尾无换行时最后一行丢失
+
+### 复现
+
+修复前强制运行 `Parser.DISABLED_NoTrailingNewline`，实际只读取 2 行，预期为 3 行。
+
+### 根因
+
+`CsvParser::readLineFromFile()` 在读取块中找不到 `\n` 时总是返回 `false`。当该块已经到达文件末尾时，缓冲区中的最后一行有效数据因此未交付给调用方。
+
+### 修复
+
+- 找不到 `\n` 且已到达文件末尾时，将当前缓冲区作为最后一行返回。
+- 找不到 `\n` 且尚未到文件末尾时，明确报告单行超过 16 MB 限制，避免把超长行误报为正常 EOF。
+- 启用 `Parser.NoTrailingNewline`，并精确断言最后一行字段为 `3,gamma,300`。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.NoTrailingNewline
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.NoTrailingNewline
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.NoTrailingNewline
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：
+
+- Release 定向测试：1/1 通过。
+- Debug 定向测试：1/1 通过。
+- ASan Debug 定向测试：1/1 通过，零 ASan 报告。
+- Release/Debug 全量回归：A-1 已通过；当前各剩余 1 项已知失败 `Pipeline.SkipBadRows`，`Pipeline.ErrorLimit` 仍因该缺陷跳过，其他已启用测试通过。该失败属于后续 A-3，不是 A-1 回归。
+
+### Git 证据
+
+Git 标签：`part-a-a1-no-trailing-newline`。

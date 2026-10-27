@@ -165,11 +165,17 @@ bool CsvParser::readLineFromFile() {
         size_t line_bytes = static_cast<size_t>(nl - line_buffer_);
         buffer_offset_ = start + line_bytes + 1;  // +1 跳过 \n
         bytes_read_ += line_bytes + 1;
-    } else {
-        buffer_offset_ = start + nread;
-        bytes_read_ += nread;
-        return false;
-    }
+	}
+	else
+	{
+		buffer_offset_ = start + nread;
+		bytes_read_ += nread;
+		if (buffer_offset_ >= file_size_)
+			return true;
+
+		last_error_ = "CSV line exceeds the 16 MB limit";
+		return false;
+	}
 
     return true;
 }

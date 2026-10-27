@@ -68,25 +68,29 @@ TEST(Parser, HeaderMapping) {
 // Parser.NoTrailingNewline
 // 已知现象见 docs/KNOWN_ISSUES.md #1。修复后把前缀 DISABLED_ 去掉以启用验证。
 // ============================================================
-TEST(Parser, DISABLED_NoTrailingNewline) {
-    csvp::CsvParser::Config cfg;
-    cfg.has_header = true;
+TEST(Parser, NoTrailingNewline)
+{
+	csvp::CsvParser::Config config;
+	config.has_header = true;
 
-    csvp::CsvParser parser(cfg);
-    ASSERT_TRUE(parser.parse(dataPath("sample_noeol.csv").c_str()));
+	csvp::CsvParser parser(config);
+	ASSERT_TRUE(parser.parse(dataPath("sample_noeol.csv").c_str()));
+	EXPECT_EQ(parser.header().size(), 3U);
 
-    // Header should be 3 columns
-    EXPECT_EQ(parser.header().size(), 3u);
+	int rowCount = 0;
+	csvp::Row row;
+	csvp::Row lastRow;
+	while (parser.readRow(row))
+	{
+		++rowCount;
+		lastRow = row;
+	}
 
-    int row_count = 0;
-    csvp::Row row;
-    csvp::Row last_row;
-    while (parser.readRow(row)) {
-        ++row_count;
-        last_row = row;
-    }
-
-    EXPECT_EQ(row_count, 3) << "expected 3 data rows";
+	EXPECT_EQ(rowCount, 3);
+	ASSERT_EQ(lastRow.size(), 3U);
+	EXPECT_EQ(lastRow[0], "3");
+	EXPECT_EQ(lastRow[1], "gamma");
+	EXPECT_EQ(lastRow[2], "300");
 }
 
 // ============================================================
