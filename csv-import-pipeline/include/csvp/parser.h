@@ -56,8 +56,8 @@ private:
     bool splitLineToFields(const char* line, size_t length, Row& row);
     bool handleQuotedField(const char* line, size_t& pos, size_t length, std::string& field);
 
-    // 编码感知的字节分类
-    bool isTrailingByte(unsigned char c) const;  // 判断是否为多字节字符的后续字节
+    size_t encodedCharacterLength(const char* line, size_t pos, size_t length) const;
+    bool isGbkEncoding() const;
 
     Config cfg_;
     std::string last_error_;

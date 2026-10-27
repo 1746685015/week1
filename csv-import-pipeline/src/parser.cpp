@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <cctype>
 #include <stdexcept>
 
 #ifdef _WIN32
@@ -16,6 +17,27 @@
 #endif
 
 namespace csvp {
+
+namespace {
+
+bool EqualsIgnoringCase(const char *left, const char *right)
+{
+	if (!left || !right)
+		return false;
+
+	while (*left != '\0' && *right != '\0')
+	{
+		const unsigned char leftByte = static_cast<unsigned char>(*left);
+		const unsigned char rightByte = static_cast<unsigned char>(*right);
+		if (std::toupper(leftByte) != std::toupper(rightByte))
+			return false;
+		++left;
+		++right;
+	}
+	return *left == *right;
+}
+
+} // namespace
 
 // ============================================================
 // internal helpers
@@ -66,6 +88,13 @@ bool CsvParser::parse(const char *filepath)
 	line_number_ = 0;
 	bytes_read_ = 0;
 	header_parsed_ = false;
+	if (!EqualsIgnoringCase(cfg_.encoding, "UTF-8")
+		&& !EqualsIgnoringCase(cfg_.encoding, "UTF8")
+		&& !EqualsIgnoringCase(cfg_.encoding, "GBK"))
+	{
+		last_error_ = "Unsupported CSV encoding";
+		return false;
+	}
 
 #ifdef _WIN32
 	fopen_s(&file_, filepath, "rb");
@@ -237,9 +266,14 @@ bool CsvParser::splitLineToFields(const char* line, size_t length, Row& row) {
             continue;
         }
 
-        // 常规字符
-        field += c;
-        ++pos;
+		const size_t characterLength = encodedCharacterLength(line, pos, length);
+		if (characterLength == 0)
+		{
+			last_error_ = isGbkEncoding() ? "Invalid GBK byte sequence" : "Invalid UTF-8 byte sequence";
+			return false;
+		}
+		field.append(line + pos, characterLength);
+		pos += characterLength;
     }
 
     // 最后一个字段
@@ -267,10 +301,18 @@ bool CsvParser::handleQuotedField(const char* line, size_t& pos, size_t length, 
         if (c == '"') {
             ++pos;  // 闭合引号，结束字段
             return true;
-        } else {
-            field += c;
-            ++pos;
-        }
+		}
+		else
+		{
+			const size_t characterLength = encodedCharacterLength(line, pos, length);
+			if (characterLength == 0)
+			{
+				last_error_ = isGbkEncoding() ? "Invalid GBK byte sequence" : "Invalid UTF-8 byte sequence";
+				return false;
+			}
+			field.append(line + pos, characterLength);
+			pos += characterLength;
+		}
     }
 
     // 引号未闭合
@@ -278,10 +320,53 @@ bool CsvParser::handleQuotedField(const char* line, size_t& pos, size_t length, 
     return false;
 }
 
-// ---------- isTrailingByte ----------
-bool CsvParser::isTrailingByte(unsigned char c) const {
-    // UTF-8 后续字节范围：0x80 ~ 0xBF
-    return (c >= 0x80 && c <= 0xBF);
+bool CsvParser::isGbkEncoding() const
+{
+	return EqualsIgnoringCase(cfg_.encoding, "GBK");
+}
+
+size_t CsvParser::encodedCharacterLength(const char *line, size_t pos, size_t length) const
+{
+	const unsigned char firstByte = static_cast<unsigned char>(line[pos]);
+	if (firstByte <= 0x7F)
+		return 1;
+
+	if (isGbkEncoding())
+	{
+		if (firstByte == 0x80)
+			return 1;
+		if (firstByte < 0x81 || firstByte > 0xFE || pos + 1 >= length)
+			return 0;
+		const unsigned char secondByte = static_cast<unsigned char>(line[pos + 1]);
+		return secondByte >= 0x40 && secondByte <= 0xFE && secondByte != 0x7F ? 2 : 0;
+	}
+
+	size_t sequenceLength = 0;
+	if (firstByte >= 0xC2 && firstByte <= 0xDF)
+		sequenceLength = 2;
+	else if (firstByte >= 0xE0 && firstByte <= 0xEF)
+		sequenceLength = 3;
+	else if (firstByte >= 0xF0 && firstByte <= 0xF4)
+		sequenceLength = 4;
+	else
+		return 0;
+
+	if (pos + sequenceLength > length)
+		return 0;
+	for (size_t index = 1; index < sequenceLength; ++index)
+	{
+		const unsigned char continuationByte = static_cast<unsigned char>(line[pos + index]);
+		if (continuationByte < 0x80 || continuationByte > 0xBF)
+			return 0;
+	}
+
+	const unsigned char secondByte = static_cast<unsigned char>(line[pos + 1]);
+	if ((firstByte == 0xE0 && secondByte < 0xA0)
+		|| (firstByte == 0xED && secondByte > 0x9F)
+		|| (firstByte == 0xF0 && secondByte < 0x90)
+		|| (firstByte == 0xF4 && secondByte > 0x8F))
+		return 0;
+	return sequenceLength;
 }
 
 // ---------- accessors ----------

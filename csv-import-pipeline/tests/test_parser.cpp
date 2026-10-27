@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <chrono>
+#include <filesystem>
 
 namespace {
 
@@ -128,25 +130,55 @@ TEST(Parser, ReentryState)
 // Parser.ChineseGBKEncoding
 // 已知现象见 docs/KNOWN_ISSUES.md #3。修复后去掉前缀 DISABLED_ 以启用验证。
 // ============================================================
-TEST(Parser, DISABLED_ChineseGBKEncoding) {
-    csvp::CsvParser::Config cfg;
-    cfg.has_header = true;
-    cfg.encoding = "GBK";
+TEST(Parser, ChineseGBKEncoding)
+{
+	csvp::CsvParser::Config config;
+	config.has_header = true;
+	config.encoding = "GBK";
 
-    csvp::CsvParser parser(cfg);
-    ASSERT_TRUE(parser.parse(dataPath("sample_gbk.csv").c_str()));
+	csvp::CsvParser parser(config);
+	ASSERT_TRUE(parser.parse(dataPath("sample_gbk.csv").c_str()));
+	ASSERT_EQ(parser.header().size(), 4U);
 
-    // Header should be parsed (GBK bytes read as raw)
-    EXPECT_GT(parser.header().size(), 0u);
+	csvp::Row row;
+	ASSERT_TRUE(parser.readRow(row));
+	EXPECT_EQ(row.size(), 4U);
 
-    // Row 1: normal GBK data, should parse to 4 columns
-    csvp::Row row;
-    ASSERT_TRUE(parser.readRow(row));
+	EXPECT_FALSE(parser.readRow(row));
+	EXPECT_NE(parser.lastError().find("Invalid GBK"), std::string::npos);
+}
 
-    // Row 2: GBK data row, expected to parse to 4 columns
-    ASSERT_TRUE(parser.readRow(row));
+TEST(Parser, GbkTrailingByteMatchesDelimiter)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_gbk_delimiter_" + std::to_string(uniqueValue) + ".csv");
+	const char content[] = {
+		'f', 'i', 'r', 's', 't', '\\', 's', 'e', 'c', 'o', 'n', 'd', '\n',
+		'A', static_cast<char>(0x81), static_cast<char>(0x5C), 'B', '\\', 'C', '\n'
+	};
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output.write(content, static_cast<std::streamsize>(sizeof(content)));
+	}
 
-    EXPECT_EQ(row.size(), 4u) << "expected 4 columns for GBK row, got " << row.size();
+	csvp::CsvParser::Config config;
+	config.has_header = true;
+	config.delimiter = '\\';
+	config.encoding = "GBK";
+	{
+		csvp::CsvParser parser(config);
+		ASSERT_TRUE(parser.parse(path.string().c_str()));
+		csvp::Row row;
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 2U);
+		EXPECT_EQ(row[0].size(), 4U);
+		EXPECT_EQ(static_cast<unsigned char>(row[0][1]), 0x81U);
+		EXPECT_EQ(static_cast<unsigned char>(row[0][2]), 0x5CU);
+		EXPECT_EQ(row[1], "C");
+	}
+	std::filesystem::remove(path);
 }
 
 // ============================================================

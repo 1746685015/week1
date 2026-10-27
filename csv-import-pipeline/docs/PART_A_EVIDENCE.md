@@ -161,3 +161,35 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a3-skip-bad-rows`。
+
+## A-4：GBK/UTF-8 多字节边界与测试样本错误
+
+### 复现与样本核对
+
+原 `Parser.DISABLED_ChineseGBKEncoding` 期望 `sample_gbk.csv` 第二条数据解析为 4 列。十六进制检查显示该行含 `D4 2C`：GBK 尾字节合法范围是 `0x40-0xFE`（排除 `0x7F`），所以 `0x2C` 不是合法尾字节，该样本本身是非法 GBK，不能把逗号强行视作汉字的一部分。
+
+同时，原解析器完全没有使用 `Config::encoding` 或 `isTrailingByte()`，任何字节都逐个与分隔符比较。
+
+### 修复
+
+- `parse()` 只接受 UTF-8/UTF8/GBK 配置，未知编码立即报错。
+- 切分普通字段和引号字段时验证 UTF-8 或 GBK 字节序列，并按完整字符推进。
+- GBK 双字节字符的合法尾字节即使等于自定义分隔符，也不会被误切。
+- 修正原测试：有效的第一行应解析为 4 列；含 `D4 2C` 的第二行必须明确返回 `Invalid GBK byte sequence`。
+- 新增合法字节级用例：使用反斜杠 `0x5C` 作分隔符，同时构造合法 GBK 双字节 `81 5C`，断言字符内部的 `0x5C` 不被误切。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.ChineseGBKEncoding:Parser.GbkTrailingByteMatchesDelimiter
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.ChineseGBKEncoding:Parser.GbkTrailingByteMatchesDelimiter
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.ChineseGBKEncoding:Parser.GbkTrailingByteMatchesDelimiter
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 2/2 通过，ASan 零报告。Release 与 Debug 全量回归均执行 23 项，23 项全部通过；仅 A-8、A-9 和 Part B 的停止测试仍保持 disabled。
+
+### Git 证据
+
+Git 标签：`part-a-a4-gbk-boundaries`。
