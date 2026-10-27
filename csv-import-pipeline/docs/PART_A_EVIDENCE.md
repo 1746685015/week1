@@ -227,3 +227,47 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a5-safe-conversions`。
+
+## A-6：固定大缓冲与重复读取导致内存和性能异常
+
+### 复现
+
+旧实现为每个解析器固定 `malloc` 16 MiB。每读取一行，都从当前偏移重新 `fseek`，再最多读取约 16 MiB，但只消费其中第一行；短行文件因此反复读取和复制相同后续数据。
+
+修复前对 `sample_100k.csv` 重复 3 次的 Release 基线：
+
+- 平均耗时：28,530.1 ms
+- 吞吐：3,434 行/秒
+- 每次结果：98,000 行导入、2,000 行跳过、2,000 条错误
+
+### 修复
+
+- 使用固定 64 KiB 顺序读取块，保留块中尚未消费的数据，不再逐行 seek/重复读取。
+- 当前行使用 `std::string` 按需增长，不再为每个解析器预分配 16 MiB 裸缓冲。
+- 检查 `fread` 的错误状态；单行超过 16 MiB 时返回明确错误，不静默截断。
+- 删除手动 `malloc/free`，禁止解析器复制，避免文件句柄或缓冲区产生双重所有权。
+- 新增跨越 64 KiB 块边界的 100,000 字节字段测试，逐字节核对字段内容。
+- `parser.h`/`parser.cpp` 按 WPS C++ 规范整理为 include guard、Tab、独占行花括号、成员 `m_` 前缀及英文注释。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.LineCrossesReadBufferBoundary
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.LineCrossesReadBufferBoundary
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.LineCrossesReadBufferBoundary
+build-review-baseline/Release/csvp_bench.exe data/sample_100k.csv 3 data/a6_optimized_report.txt
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：
+
+- Release、Debug、ASan Debug 跨块测试均为 1/1 通过，ASan 零报告。
+- Release 与 Debug 全量回归均执行 25 项，25 项全部通过。
+- 优化后 3 次平均 107.16 ms，吞吐 914,516 行/秒；结果仍为 98,000 行导入、2,000 行跳过、2,000 条错误。
+- 同一设备、同一文件、同一 Release 命令下，相对旧实现加速约 266.2 倍。
+- 基准进程观测到的峰值工作集约 5.37 MiB。此数据证明 10 万行样本的内存行为；1 GB 文件小于 50 MB 的最终证明仍属于 Part C，不能用本结果替代。
+
+### Git 证据
+
+Git 标签：`part-a-a6-buffered-io`。

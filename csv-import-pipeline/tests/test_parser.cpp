@@ -181,6 +181,31 @@ TEST(Parser, GbkTrailingByteMatchesDelimiter)
 	std::filesystem::remove(path);
 }
 
+TEST(Parser, LineCrossesReadBufferBoundary)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_buffer_boundary_" + std::to_string(uniqueValue) + ".csv");
+	const std::string longField(100000U, 'x');
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "payload,status\n" << longField << ",tail\n";
+	}
+
+	{
+		csvp::CsvParser parser;
+		ASSERT_TRUE(parser.parse(path.string().c_str()));
+		csvp::Row row;
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 2U);
+		EXPECT_EQ(row[0].size(), longField.size());
+		EXPECT_EQ(row[0], longField);
+		EXPECT_EQ(row[1], "tail");
+	}
+	std::filesystem::remove(path);
+}
+
 // ============================================================
 // Parser.EmptyFile (PASS)
 // ============================================================
