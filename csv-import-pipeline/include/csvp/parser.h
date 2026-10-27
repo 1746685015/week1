@@ -15,6 +15,13 @@ namespace csvp {
 class CsvParser
 {
 public:
+	enum class ReadStatus
+	{
+		RowReadStatus,
+		EofReadStatus,
+		ErrorReadStatus,
+	};
+
 	struct Config
 	{
 		char delimiter = ',';
@@ -32,6 +39,7 @@ public:
 
 	bool parse(const char *filepath);
 	bool readRow(Row &row);
+	ReadStatus readNext(Row &row);
 
 	const std::vector<std::string> &header() const
 	{

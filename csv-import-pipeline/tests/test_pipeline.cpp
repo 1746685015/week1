@@ -140,6 +140,43 @@ TEST(Pipeline, NoHeaderUsesRuleCount)
 	std::filesystem::remove(path);
 }
 
+TEST(Pipeline, ParseErrorDoesNotBecomeEof)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_parse_error_" + std::to_string(uniqueValue) + ".csv");
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "id,name\n"
+			<< "1,Alice\n"
+			<< "2,\"unclosed\n"
+			<< "3,Carol\n";
+	}
+
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	const std::vector<FieldRule> rules = {
+		{"id", FieldType::Int, true},
+		{"name", FieldType::String, true},
+	};
+	ImportPipeline pipeline(config, rules);
+	const ImportPipeline::Result result = pipeline.importSync(path.string().c_str());
+
+	EXPECT_EQ(result.rows_imported, 2U);
+	EXPECT_EQ(result.rows_skipped, 1U);
+	ASSERT_EQ(result.errors.size(), 1U);
+	EXPECT_EQ(result.errors[0].line_number, 3U);
+	ASSERT_EQ(result.errors[0].cell_errors.size(), 1U);
+	EXPECT_EQ(result.errors[0].cell_errors[0].code, ErrorCode::ParseError);
+	EXPECT_NE(result.errors[0].cell_errors[0].message.find("Unclosed quote"), std::string::npos);
+
+	config.skip_bad_rows = false;
+	ImportPipeline strictPipeline(config, rules);
+	EXPECT_THROW(strictPipeline.importSync(path.string().c_str()), std::runtime_error);
+	std::filesystem::remove(path);
+}
+
 // ============================================================
 // Pipeline.StreamingImportNotImplemented (PASS - skeleton check)
 // ============================================================

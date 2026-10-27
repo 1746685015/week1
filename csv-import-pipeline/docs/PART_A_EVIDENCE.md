@@ -390,3 +390,34 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a10-no-header-schema`。
+
+## A-11：解析失败被当作正常 EOF，导致后续数据静默丢失
+
+### 复现与根因
+
+旧 `readRow()` 对正常 EOF、未打开文件、I/O 错误和 CSV 格式错误都返回 `false`。`importSync()` 使用 `while (parser.readRow(row))`，因此文件中间出现未闭合引号等解析错误时会直接结束循环，并把错误后的合法行静默丢弃。
+
+### 修复
+
+- 新增 `ReadStatus` 三态读取结果，明确区分成功行、EOF 和错误。
+- 保留原 `readRow()` 作为兼容接口，管道改用三态 `readNext()`。
+- 跳过坏行模式下，解析错误记录为 `ParseError`，遵守 `error_limit`，然后继续读取下一物理行。
+- 非跳过模式下，解析错误立即抛出包含行号和具体解析原因的异常。
+- 表头读取失败时保留底层解析原因，不再统一覆盖成模糊信息。
+- 新增中间坏行测试，验证坏行后的合法行仍被导入，并验证严格模式明确失败。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Pipeline.ParseErrorDoesNotBecomeEof
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Pipeline.ParseErrorDoesNotBecomeEof
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Pipeline.ParseErrorDoesNotBecomeEof
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 1/1 通过，ASan 零报告；Release 与 Debug 全量回归均为 32/32。测试中的第 3 行解析错误被记录，最后一行仍成功导入。
+
+### Git 证据
+
+Git 标签：`part-a-a11-read-status`。

@@ -80,9 +80,12 @@ bool CsvParser::parse(const char *filepath)
 	if (m_config.has_header)
 	{
 		Row headerRow;
-		if (!readRow(headerRow))
+		if (readNext(headerRow) != ReadStatus::RowReadStatus)
 		{
-			m_lastError = "Failed to read header row";
+			if (m_lastError.empty())
+				m_lastError = "Failed to read header row";
+			else
+				m_lastError = "Failed to read header row: " + m_lastError;
 			fclose(m_file);
 			m_file = nullptr;
 			return false;
@@ -97,15 +100,25 @@ bool CsvParser::parse(const char *filepath)
 
 bool CsvParser::readRow(Row &row)
 {
+	return readNext(row) == ReadStatus::RowReadStatus;
+}
+
+CsvParser::ReadStatus CsvParser::readNext(Row &row)
+{
 	if (!m_file)
 	{
 		m_lastError = "No file opened";
-		return false;
+		return ReadStatus::ErrorReadStatus;
 	}
 
 	row.clear();
+	m_lastError.clear();
 	if (!readLineFromFile())
-		return false;
+	{
+		return m_lastError.empty()
+			? ReadStatus::EofReadStatus
+			: ReadStatus::ErrorReadStatus;
+	}
 
 	if (m_lineEndedWithNewline && !m_lineBuffer.empty() && m_lineBuffer.back() == '\r')
 		m_lineBuffer.pop_back();
@@ -113,17 +126,17 @@ bool CsvParser::readRow(Row &row)
 	if (m_lineBuffer.empty())
 	{
 		++m_lineNumber;
-		return readRow(row);
+		return readNext(row);
 	}
 
 	if (!splitLineToFields(m_lineBuffer.data(), m_lineBuffer.size(), row))
 	{
 		++m_lineNumber;
-		return false;
+		return ReadStatus::ErrorReadStatus;
 	}
 
 	++m_lineNumber;
-	return true;
+	return ReadStatus::RowReadStatus;
 }
 
 bool CsvParser::readLineFromFile()

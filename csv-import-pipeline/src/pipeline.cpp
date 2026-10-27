@@ -39,8 +39,33 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 		? parser.header().size()
 		: rules_.size();
     Row row;
-    while (parser.readRow(row)) {
+	while (true)
+	{
+		const CsvParser::ReadStatus readStatus = parser.readNext(row);
+		if (readStatus == CsvParser::ReadStatus::EofReadStatus)
+			break;
+
         ++stats_.total_lines;
+		if (readStatus == CsvParser::ReadStatus::ErrorReadStatus)
+		{
+			std::ostringstream message;
+			message << "CSV parse error at line " << parser.lineNumber()
+				<< ": " << parser.lastError();
+			if (!cfg_.skip_bad_rows)
+				throw std::runtime_error(message.str());
+
+			RowError rowError;
+			rowError.line_number = parser.lineNumber();
+			rowError.raw_line = "(parse error, raw line unavailable)";
+			CellError cellError;
+			cellError.code = ErrorCode::ParseError;
+			cellError.message = message.str();
+			rowError.cell_errors.push_back(std::move(cellError));
+			if (cfg_.error_limit == 0 || result.errors.size() < cfg_.error_limit)
+				result.errors.push_back(std::move(rowError));
+			++result.rows_skipped;
+			continue;
+		}
 
 		if (row.size() != expectedColumnCount)
 		{
