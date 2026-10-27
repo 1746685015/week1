@@ -3,6 +3,9 @@
 #include "csvp/validator.h"
 
 #include <gtest/gtest.h>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -101,6 +104,40 @@ TEST(Pipeline, ErrorLimit)
 	EXPECT_EQ(result.rows_imported, 2U);
 	EXPECT_EQ(result.rows_skipped, 5U);
 	EXPECT_EQ(result.errors.size(), config.error_limit);
+}
+
+TEST(Pipeline, NoHeaderUsesRuleCount)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_no_header_" + std::to_string(uniqueValue) + ".csv");
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "1,Alice,true\n"
+			<< "2,Bob,false\n"
+			<< "bad,row\n"
+			<< "3,Carol,true\n";
+	}
+
+	ImportPipeline::Config config;
+	config.parser.has_header = false;
+	config.skip_bad_rows = true;
+	const std::vector<FieldRule> rules = {
+		{"id", FieldType::Int, true},
+		{"name", FieldType::String, true},
+		{"active", FieldType::Bool, true},
+	};
+	ImportPipeline pipeline(config, rules);
+	const ImportPipeline::Result result = pipeline.importSync(path.string().c_str());
+
+	EXPECT_EQ(result.rows_imported, 3U);
+	EXPECT_EQ(result.rows_skipped, 1U);
+	ASSERT_EQ(result.errors.size(), 1U);
+	EXPECT_EQ(result.errors[0].line_number, 3U);
+	ASSERT_EQ(result.errors[0].cell_errors.size(), 1U);
+	EXPECT_EQ(result.errors[0].cell_errors[0].code, ErrorCode::ColumnCountMismatch);
+	std::filesystem::remove(path);
 }
 
 // ============================================================

@@ -35,15 +35,18 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
     stats_.rows_skipped = 0;
     stats_.elapsed_ms = 0;
 
+	const std::size_t expectedColumnCount = cfg_.parser.has_header
+		? parser.header().size()
+		: rules_.size();
     Row row;
     while (parser.readRow(row)) {
         ++stats_.total_lines;
 
-		if (row.size() != parser.header().size())
+		if (row.size() != expectedColumnCount)
 		{
 			std::ostringstream message;
 			message << "Column count mismatch at line " << parser.lineNumber()
-				<< ": expected " << parser.header().size()
+				<< ": expected " << expectedColumnCount
 				<< " columns, got " << row.size();
 
 			if (!cfg_.skip_bad_rows)

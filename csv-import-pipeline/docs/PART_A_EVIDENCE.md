@@ -362,3 +362,31 @@ build-review-asan-msvc/Debug/csvp_tests.exe
 ### Git 证据
 
 Git 标签：`part-a-a9-line-endings`。
+
+## A-10：无表头模式把正常数据行误判为列数错误
+
+### 复现与根因
+
+`importSync()` 原来始终用 `parser.header().size()` 校验数据行列数。配置 `has_header=false` 时表头必然为空，因此任何非空数据行都会与期望的 0 列不一致，无法正常导入。
+
+### 修复
+
+- 有表头时继续以表头列数作为期望列数。
+- 无表头时以构造管道时传入的字段规则数量作为显式 schema 列数。
+- 新增无表头测试：三列规则下 3 条合法行成功导入，1 条两列坏行被跳过并记录为第 3 行的 `ColumnCountMismatch`。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Pipeline.NoHeaderUsesRuleCount
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Pipeline.NoHeaderUsesRuleCount
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Pipeline.NoHeaderUsesRuleCount
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 1/1 通过，ASan 零报告；Release 与 Debug 全量回归均为 31/31。
+
+### Git 证据
+
+Git 标签：`part-a-a10-no-header-schema`。
