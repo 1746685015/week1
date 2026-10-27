@@ -844,3 +844,31 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a27-regex-parameter-safety`。
+
+## A-28：预编译正则的 optional 访问缺少显式状态处理
+
+### 复现与根因
+
+全项目 clang-tidy 审查在 `validateRegex()` 中报告 `bugprone-unchecked-optional-access`。原逻辑在同一布尔表达式中隐式检查 `std::optional<std::regex>` 并用 `operator*` 解引用；分析器无法证明访问安全，而且当“无编译错误但 optional 为空”的内部不一致状态出现时，旧代码会直接返回成功，静默跳过正则校验。
+
+### 修复
+
+- 为当前列的 optional 建立 const 引用，并用 `has_value()` 明确检查状态。
+- 缓存不一致时返回 `Compiled regex is unavailable`，不再静默放行字段。
+- 仅在确认有值后通过 `value()` 取得正则，再执行 `std::regex_match()`。
+
+### 验证
+
+```powershell
+clang-tidy src/validator.cpp -checks="-*,bugprone-unchecked-optional-access" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Validator.RegexCheck:Validator.ReportsInvalidRegexConfiguration:Pipeline.InvalidRegexErrorIsTraceable
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Validator.RegexCheck:Validator.ReportsInvalidRegexConfiguration:Pipeline.InvalidRegexErrorIsTraceable
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：专项 clang-tidy 显示告警 0、错误 0；Release/Debug 定向测试均为 3/3 通过，全量回归均为 47/47 通过、零失败。
+
+### Git 证据
+
+Git 标签：`part-a-a28-checked-regex-cache`。

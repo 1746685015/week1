@@ -238,8 +238,13 @@ bool FieldValidator::validateRegex(std::size_t columnIndex, const std::string &v
 			errorMessage = m_regexErrors[columnIndex];
 			return false;
 		}
-		if (m_compiledRegex[columnIndex]
-			&& !std::regex_match(value, *m_compiledRegex[columnIndex]))
+		const std::optional<std::regex> &compiledRegex = m_compiledRegex[columnIndex];
+		if (!compiledRegex.has_value())
+		{
+			errorMessage = "Compiled regex is unavailable";
+			return false;
+		}
+		if (!std::regex_match(value, compiledRegex.value()))
 		{
 			errorMessage = "Value does not match pattern: " + pattern;
 			return false;
