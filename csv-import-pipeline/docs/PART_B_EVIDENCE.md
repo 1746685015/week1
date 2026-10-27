@@ -157,3 +157,29 @@ clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++
 提交信息：`feat: report streaming progress every 1000 rows`。
 
 标签：`part-b-b3-progress`。
+
+## B4：回调取消并返回部分结果
+
+### 语义与实现
+
+- 进度 callback 返回 `false` 时，worker 在已完成当前 1000 行批次后停止读取；本次 callback 对应的行已计入结果和实时统计。
+- 取消属于正常控制流：future 返回部分 `Result`，不抛出取消异常。
+- worker 的统一退出路径仍会将 pending 清零并通知等待者；取消后没有后台任务遗留。
+
+### 验证命令
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Concurrent.StreamingProgressCanCancel
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Concurrent.StreamingProgressCanCancel
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+```
+
+结果：Release/Debug 定向测试均为 1/1 通过；两种配置全量回归均为 51/51 通过、零失败；clang-tidy 退出码 0，显示告警 0、错误 0。callback 仅收到 1000、2000 两次进度，在 2000 返回 `false` 后 future 正常返回共 2000 行的部分结果，pending=0。
+
+### Git 证据
+
+提交信息：`feat: support progress callback cancellation`。
+
+标签：`part-b-b4-progress-cancel`。

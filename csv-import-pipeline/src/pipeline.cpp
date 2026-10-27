@@ -153,7 +153,8 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
 		if (progress != nullptr && static_cast<bool>(*progress)
 			&& processed % PROGRESS_INTERVAL == 0)
 		{
-			(void)(*progress)(processed);
+			if (!(*progress)(processed))
+				break;
 		}
     }
 

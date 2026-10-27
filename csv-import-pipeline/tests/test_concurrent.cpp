@@ -152,6 +152,29 @@ TEST(Concurrent, StreamingProgressEveryThousand)
 	EXPECT_EQ(pipeline.pendingCount(), 0U);
 }
 
+TEST(Concurrent, StreamingProgressCanCancel)
+{
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	ImportPipeline pipeline(config, makeDefaultRules());
+	std::vector<std::size_t> progressValues;
+
+	std::future<ImportPipeline::Result> future = pipeline.importStreaming(
+		dataPath("sample_100k.csv").c_str(),
+		[&progressValues](std::size_t processed)
+		{
+			progressValues.push_back(processed);
+			return processed < 2000U;
+		});
+	const ImportPipeline::Result result = future.get();
+
+	ASSERT_EQ(progressValues.size(), 2U);
+	EXPECT_EQ(progressValues[0], 1000U);
+	EXPECT_EQ(progressValues[1], 2000U);
+	EXPECT_EQ(result.rows_imported + result.rows_skipped, 2000U);
+	EXPECT_EQ(pipeline.pendingCount(), 0U);
+}
+
 TEST(Concurrent, SyncImportStatsMatchResult)
 {
 	ImportPipeline::Config config;
