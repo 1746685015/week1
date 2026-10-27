@@ -135,48 +135,26 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 void ImportPipeline::validateAndCollect(Row &row, std::uint64_t lineNumber,
 	const CsvParser &parser, Result &result)
 {
-    try {
-        auto cell_errors = validator_.validate(row);
+	std::vector<CellError> cellErrors = validator_.validate(row);
+	if (cellErrors.empty())
+	{
+		++result.rows_imported;
+		return;
+	}
 
-        if (cell_errors.empty()) {
-            // 校验通过
-            ++result.rows_imported;
-            return;
-        }
+	RowError rowError;
+	rowError.line_number = lineNumber;
+	parser.getRawLine(rowError.raw_line);
+	rowError.cell_errors = std::move(cellErrors);
+	if (!cfg_.skip_bad_rows)
+	{
+		result.errors.push_back(std::move(rowError));
+		throw std::runtime_error("Validation failed and skip_bad_rows is disabled");
+	}
 
-        // 校验失败：收集错误
-        if (cfg_.skip_bad_rows) {
-            // 跳过坏行模式：记录错误但不中断
-            RowError row_err;
-            row_err.line_number = lineNumber;
-			parser.getRawLine(row_err.raw_line);
-
-            row_err.cell_errors = std::move(cell_errors);
-
-            if (cfg_.error_limit == 0 || result.errors.size() < cfg_.error_limit) {
-                result.errors.push_back(std::move(row_err));
-            }
-            ++result.rows_skipped;
-        } else {
-            // 非跳过模式：遇到错误立即失败
-            RowError row_err;
-            row_err.line_number = lineNumber;
-			parser.getRawLine(row_err.raw_line);
-            row_err.cell_errors = std::move(cell_errors);
-            result.errors.push_back(std::move(row_err));
-
-            throw std::runtime_error("Validation failed and skip_bad_rows is disabled");
-        }
-    } catch (const std::runtime_error&) {
-        if (!cfg_.skip_bad_rows) {
-            throw;  // 重新抛出
-        }
-        // skip_bad_rows 模式下记录但继续
-        RowError row_err;
-        row_err.line_number = lineNumber;
-        row_err.raw_line = "(exception occurred, raw line unavailable)";
-        ++result.rows_skipped;
-    }
+	if (cfg_.error_limit == 0 || result.errors.size() < cfg_.error_limit)
+		result.errors.push_back(std::move(rowError));
+	++result.rows_skipped;
 }
 
 // ============================================================

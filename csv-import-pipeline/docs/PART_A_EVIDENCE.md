@@ -510,3 +510,34 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a14-numeric-validation`。
+
+## A-15：异常分支跳过坏行但不保存错误
+
+### 复现与根因
+
+旧 `validateAndCollect()` 用 `catch (const std::runtime_error &)` 包住整个校验流程。跳过模式进入该分支后只创建一个局部 `RowError`，既不写入 `result.errors`，也不保存异常原因，并用“原始行不可用”的占位文本覆盖事实。
+
+源码进一步核对发现，当前真实可预期的正则异常已由 `FieldValidator` 转换成 `RegexMismatch`；旧 catch 分支没有正常业务触发源，却可能在未来静默吞掉意外异常。
+
+### 修复
+
+- 删除吞掉 `std::runtime_error` 的分支。
+- 可预期校验失败统一由 `CellError` 返回并保存；严格模式保存错误后明确失败，跳过模式遵守 `error_limit` 并继续。
+- 不可预期异常不再伪装成成功跳过，避免丢失真实原因。
+- 新增非法正则测试，核对跳过数、错误数、行号、原始行、`RegexMismatch` 和具体错误消息。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Pipeline.InvalidRegexErrorIsTraceable
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Pipeline.InvalidRegexErrorIsTraceable
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Pipeline.InvalidRegexErrorIsTraceable
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 1/1 通过，ASan 零报告；Release 与 Debug 全量回归均为 38/38。
+
+### Git 证据
+
+Git 标签：`part-a-a15-traceable-errors`。

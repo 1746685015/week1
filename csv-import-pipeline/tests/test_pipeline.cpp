@@ -237,6 +237,38 @@ TEST(Pipeline, RejectsHeaderRuleCountMismatch)
 		std::string::npos);
 }
 
+TEST(Pipeline, InvalidRegexErrorIsTraceable)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_invalid_regex_" + std::to_string(uniqueValue) + ".csv");
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "value\ntext\n";
+	}
+
+	FieldRule rule;
+	rule.name = "value";
+	rule.type = FieldType::String;
+	rule.regex = "[";
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	ImportPipeline pipeline(config, {rule});
+	const ImportPipeline::Result result = pipeline.importSync(path.string().c_str());
+
+	EXPECT_EQ(result.rows_imported, 0U);
+	EXPECT_EQ(result.rows_skipped, 1U);
+	ASSERT_EQ(result.errors.size(), 1U);
+	EXPECT_EQ(result.errors[0].line_number, 2U);
+	EXPECT_EQ(result.errors[0].raw_line, "text");
+	ASSERT_EQ(result.errors[0].cell_errors.size(), 1U);
+	EXPECT_EQ(result.errors[0].cell_errors[0].code, ErrorCode::RegexMismatch);
+	EXPECT_NE(result.errors[0].cell_errors[0].message.find("Invalid regex pattern"),
+		std::string::npos);
+	std::filesystem::remove(path);
+}
+
 // ============================================================
 // Pipeline.StreamingImportNotImplemented (PASS - skeleton check)
 // ============================================================
