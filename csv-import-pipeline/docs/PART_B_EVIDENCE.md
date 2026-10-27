@@ -71,3 +71,32 @@ build-review-baseline/Release/csvp_tests.exe --gtest_list_tests
 提交信息：`chore: establish Part B baseline`。
 
 标签：`part-b-b0-baseline`。
+
+## B1：任务状态和线程生命周期基础
+
+### 设计
+
+- `m_lifecycleMutex` 只保护 worker 的创建、移动和 join，不用于文件 I/O、校验或 callback。
+- `m_stateMutex` 保护 streaming active 状态与 pending 数；`pendingCount()` 返回锁保护的一致快照。
+- `m_stateChanged` 为后续限时等待提供完成通知，不用忙等或固定 sleep 猜测状态。
+- `m_worker` 由 `ImportPipeline` 独占；不使用 `detach()`。析构时先请求停止，再 join，避免线程访问已销毁对象。
+- 显式禁用复制，防止互斥量、线程和统计状态被意外复制。
+- 头文件由 `#pragma once` 改为可移植 include guard，并按 WPS C++ 规范统一本次涉及的声明。
+
+### 验证命令
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Concurrent.PendingCountInitiallyZero:Concurrent.ShutdownWhenIdle
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Concurrent.PendingCountInitiallyZero:Concurrent.ShutdownWhenIdle
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+```
+
+结果：Release/Debug 定向测试均为 2/2 通过；两种配置全量回归均为 49/49 通过、零失败；clang-tidy 退出码 0，显示告警 0、错误 0。空闲 shutdown 实测未等待完整的 25 ms 超时，pending 始终为 0。
+
+### Git 证据
+
+提交信息：`feat: add streaming task lifecycle state`。
+
+标签：`part-b-b1-lifecycle-state`。

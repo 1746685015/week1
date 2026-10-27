@@ -105,6 +105,23 @@ TEST(Concurrent, StatsAtomicRead) {
               << s.total_lines << std::endl;
 }
 
+TEST(Concurrent, PendingCountInitiallyZero)
+{
+	ImportPipeline pipeline(ImportPipeline::Config{}, {});
+	EXPECT_EQ(pipeline.pendingCount(), 0U);
+}
+
+TEST(Concurrent, ShutdownWhenIdle)
+{
+	ImportPipeline pipeline(ImportPipeline::Config{}, {});
+	const auto startTime = std::chrono::steady_clock::now();
+	pipeline.shutdown(std::chrono::milliseconds(25));
+	const auto elapsed = std::chrono::steady_clock::now() - startTime;
+
+	EXPECT_EQ(pipeline.pendingCount(), 0U);
+	EXPECT_LT(elapsed, std::chrono::milliseconds(200));
+}
+
 TEST(Concurrent, SyncImportStatsMatchResult)
 {
 	ImportPipeline::Config config;

@@ -3,12 +3,21 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 
 namespace csvp {
 
-ImportPipeline::ImportPipeline(const Config& cfg, std::vector<FieldRule> rules)
-    : cfg_(cfg), rules_(std::move(rules)) {
-    validator_.addRules(rules_);
+ImportPipeline::ImportPipeline(const Config &config, std::vector<FieldRule> rules)
+	: m_config(config)
+	, m_rules(std::move(rules))
+{
+	m_validator.addRules(m_rules);
+}
+
+ImportPipeline::~ImportPipeline()
+{
+	m_stopRequested.store(true, std::memory_order_release);
+	joinWorker();
 }
 
 // ============================================================
@@ -24,7 +33,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 	m_rowsSkipped.store(0, std::memory_order_relaxed);
 	m_elapsedMilliseconds.store(0.0, std::memory_order_relaxed);
 
-    CsvParser parser(cfg_.parser);
+    CsvParser parser(m_config.parser);
     if (!parser.parse(filepath)) {
         // 文件打开或表头解析失败
         RowError fatal;
@@ -37,14 +46,14 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
         return result;
     }
 
-	const std::size_t expectedColumnCount = cfg_.parser.has_header
+	const std::size_t expectedColumnCount = m_config.parser.has_header
 		? parser.header().size()
-		: rules_.size();
-	if (cfg_.parser.has_header && expectedColumnCount != rules_.size())
+		: m_rules.size();
+	if (m_config.parser.has_header && expectedColumnCount != m_rules.size())
 	{
 		std::ostringstream message;
 		message << "Schema mismatch: CSV header has " << expectedColumnCount
-			<< " columns, but " << rules_.size() << " validation rules were configured";
+			<< " columns, but " << m_rules.size() << " validation rules were configured";
 		RowError schemaError;
 		schemaError.line_number = parser.lineNumber();
 		parser.getRawLine(schemaError.raw_line);
@@ -61,7 +70,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 	}
 
 	std::string configurationError;
-	if (validator_.getConfigurationError(configurationError))
+	if (m_validator.getConfigurationError(configurationError))
 	{
 		RowError schemaError;
 		CellError cellError;
@@ -90,7 +99,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 			std::ostringstream message;
 			message << "CSV parse error at line " << parser.lineNumber()
 				<< ": " << parser.lastError();
-			if (!cfg_.skip_bad_rows)
+			if (!m_config.skip_bad_rows)
 				throw std::runtime_error(message.str());
 
 			RowError rowError;
@@ -100,7 +109,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 			cellError.code = ErrorCode::ParseError;
 			cellError.message = message.str();
 			rowError.cell_errors.push_back(std::move(cellError));
-			if (cfg_.error_limit == 0 || result.errors.size() < cfg_.error_limit)
+			if (m_config.error_limit == 0 || result.errors.size() < m_config.error_limit)
 				result.errors.push_back(std::move(rowError));
 			++result.rows_skipped;
 			m_rowsSkipped.store(result.rows_skipped, std::memory_order_relaxed);
@@ -114,7 +123,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 				<< ": expected " << expectedColumnCount
 				<< " columns, got " << row.size();
 
-			if (!cfg_.skip_bad_rows)
+			if (!m_config.skip_bad_rows)
 				throw std::runtime_error(message.str());
 
 			RowError rowError;
@@ -125,7 +134,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 			cellError.code = ErrorCode::ColumnCountMismatch;
 			cellError.message = message.str();
 			rowError.cell_errors.push_back(std::move(cellError));
-			if (cfg_.error_limit == 0 || result.errors.size() < cfg_.error_limit)
+			if (m_config.error_limit == 0 || result.errors.size() < m_config.error_limit)
 				result.errors.push_back(std::move(rowError));
 			++result.rows_skipped;
 			m_rowsSkipped.store(result.rows_skipped, std::memory_order_relaxed);
@@ -156,7 +165,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 void ImportPipeline::validateAndCollect(Row &row, std::uint64_t lineNumber,
 	const CsvParser &parser, Result &result)
 {
-	std::vector<CellError> cellErrors = validator_.validate(row);
+	std::vector<CellError> cellErrors = m_validator.validate(row);
 	if (cellErrors.empty())
 	{
 		++result.rows_imported;
@@ -167,13 +176,13 @@ void ImportPipeline::validateAndCollect(Row &row, std::uint64_t lineNumber,
 	rowError.line_number = lineNumber;
 	parser.getRawLine(rowError.raw_line);
 	rowError.cell_errors = std::move(cellErrors);
-	if (!cfg_.skip_bad_rows)
+	if (!m_config.skip_bad_rows)
 	{
 		result.errors.push_back(std::move(rowError));
 		throw std::runtime_error("Validation failed and skip_bad_rows is disabled");
 	}
 
-	if (cfg_.error_limit == 0 || result.errors.size() < cfg_.error_limit)
+	if (m_config.error_limit == 0 || result.errors.size() < m_config.error_limit)
 		result.errors.push_back(std::move(rowError));
 	++result.rows_skipped;
 }
@@ -218,7 +227,8 @@ std::future<ImportPipeline::Result> ImportPipeline::importStreaming(
     return promise.get_future();
 }
 
-void ImportPipeline::shutdown(std::chrono::milliseconds /*timeout*/) {
+void ImportPipeline::shutdown(std::chrono::milliseconds timeout)
+{
     // TODO: 让正在跑的导入停下来。
     //
     // 注意：这里做的是"打个招呼，让它自己收尾"，而不是把线程强行杀掉。
@@ -233,6 +243,25 @@ void ImportPipeline::shutdown(std::chrono::milliseconds /*timeout*/) {
     // 5. 这一条是对后台线程的配合要求：它必须隔一段时间看一眼 stop_requested_，
     //    否则如果它正卡在一个耗时的操作里（比如 std::stod 解析超长数字），
     //    shutdown 就只能一直干等到 timeout 才返回。
+	m_stopRequested.store(true, std::memory_order_release);
+	std::unique_lock<std::mutex> stateLock(m_stateMutex);
+	m_stateChanged.wait_for(stateLock, timeout, [this]()
+	{
+		return !m_streamingActive;
+	});
+}
+
+std::size_t ImportPipeline::pendingCount() const
+{
+	std::lock_guard<std::mutex> stateLock(m_stateMutex);
+	return m_pendingCount;
+}
+
+void ImportPipeline::joinWorker()
+{
+	std::lock_guard<std::mutex> lifecycleLock(m_lifecycleMutex);
+	if (m_worker.joinable())
+		m_worker.join();
 }
 
 // ============================================================
