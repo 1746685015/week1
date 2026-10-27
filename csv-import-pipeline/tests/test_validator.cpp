@@ -7,6 +7,42 @@
 
 namespace {
 
+TEST(Row, TypedConversions)
+{
+	csvp::Row row({
+		"0", "", "N/A", "12abc", "-42", "2147483648", "1.5", "1e9999",
+		"nan", "inf", "false", "maybe", " 7 "
+	});
+
+	int integerValue = 99;
+	EXPECT_TRUE(row.tryToInt(0, integerValue));
+	EXPECT_EQ(integerValue, 0);
+	EXPECT_FALSE(row.tryToInt(1, integerValue));
+	EXPECT_FALSE(row.tryToInt(2, integerValue));
+	EXPECT_FALSE(row.tryToInt(3, integerValue));
+	EXPECT_TRUE(row.tryToInt(4, integerValue));
+	EXPECT_EQ(integerValue, -42);
+	EXPECT_FALSE(row.tryToInt(5, integerValue));
+	EXPECT_FALSE(row.tryToInt(12, integerValue));
+	EXPECT_FALSE(row.tryToInt(99, integerValue));
+
+	double doubleValue = 0.0;
+	EXPECT_TRUE(row.tryToDouble(6, doubleValue));
+	EXPECT_DOUBLE_EQ(doubleValue, 1.5);
+	EXPECT_FALSE(row.tryToDouble(7, doubleValue));
+	EXPECT_FALSE(row.tryToDouble(8, doubleValue));
+	EXPECT_FALSE(row.tryToDouble(9, doubleValue));
+
+	bool boolValue = true;
+	EXPECT_TRUE(row.tryToBool(10, boolValue));
+	EXPECT_FALSE(boolValue);
+	EXPECT_FALSE(row.tryToBool(11, boolValue));
+	EXPECT_FALSE(row.tryToBool(99, boolValue));
+
+	EXPECT_EQ(row.toInt(2), 0);
+	EXPECT_DOUBLE_EQ(row.toDouble(2), 0.0);
+}
+
 // ============================================================
 // Validator.TypeCheckString (PASS)
 // ============================================================

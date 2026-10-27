@@ -193,3 +193,37 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a4-gbk-boundaries`。
+
+## A-5：类型转换无法区分真实零值与失败
+
+### 复现
+
+原 `Row::toInt()` 对空值、非法字符串、越界索引和真实 `0` 都返回 0；`toDouble()` 使用 `atof()`，同样无法报告失败，也不检查溢出或 `nan/inf`。`toBool()` 把合法 `false` 和任意非法文本都返回为 `false`。
+
+### 根因
+
+原接口只返回数值，没有错误通道；整数异常被全部捕获并静默转为 0，浮点使用无法报告转换状态的 `atof()`。
+
+### 修复
+
+- 新增 `tryToInt(index, value)`：使用 `from_chars`，要求完整消费字符串并检查溢出。
+- 新增 `tryToDouble(index, value)`：检查完整消费、`ERANGE`、有限值及首尾空白。
+- 新增 `tryToBool(index, value)`：合法真值与假值都返回成功，非法文本返回失败。
+- 保留原 `toInt/toDouble/toBool` 的兼容回退值，避免破坏已有调用方；需要区分失败的新代码必须使用 `tryTo*`。
+- 头文件同步改为可移植 include guard，并按 WPS C++ 规范整理本次涉及代码。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Row.TypedConversions
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Row.TypedConversions
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Row.TypedConversions
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 1/1 通过，ASan 零报告。Release 与 Debug 全量回归均执行 24 项，24 项全部通过。
+
+### Git 证据
+
+Git 标签：`part-a-a5-safe-conversions`。
