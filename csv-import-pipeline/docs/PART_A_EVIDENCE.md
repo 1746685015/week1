@@ -128,3 +128,36 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a2-reentry-state`。
+
+## A-3：跳过坏行模式仍因列数错误中断
+
+### 复现
+
+修复前 `Pipeline.SkipBadRows` 在第 4 行列数为 6、表头列数为 5 时抛出 `runtime_error`。`Pipeline.ErrorLimit` 捕获该异常后调用 `GTEST_SKIP()`，没有真正验证错误上限。
+
+### 根因
+
+`importSync()` 的列数检查无条件抛异常，没有读取 `skip_bad_rows`。该路径也没有生成 `RowError`，所以即使调用方捕获异常，也拿不到错误行证据。
+
+### 修复
+
+- 非跳过模式保持立即失败的既有行为。
+- 跳过模式为列数不匹配创建 `ColumnCountMismatch` 错误，遵守 `error_limit` 后继续读取下一行。
+- 加强 `Pipeline.SkipBadRows`：精确断言 2 行导入、5 行跳过、5 条错误及首条错误行号/错误码。
+- 删除 `Pipeline.ErrorLimit` 的异常捕获和 `GTEST_SKIP()`，精确断言只保存 3 条错误但仍统计 5 行跳过。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Pipeline.SkipBadRows:Pipeline.ErrorLimit
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Pipeline.SkipBadRows:Pipeline.ErrorLimit
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Pipeline.SkipBadRows:Pipeline.ErrorLimit
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 2/2 通过，ASan 零报告。Release 与 Debug 全量回归均执行 21 项，21 项全部通过；剩余 4 项因尚未进入对应 Part A/Part B 修复而保持 disabled。
+
+### Git 证据
+
+Git 标签：`part-a-a3-skip-bad-rows`。

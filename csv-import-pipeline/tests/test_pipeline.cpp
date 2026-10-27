@@ -64,53 +64,43 @@ TEST(Pipeline, MissingFile) {
 // ============================================================
 // Pipeline.SkipBadRows
 // ============================================================
-TEST(Pipeline, SkipBadRows) {
-    ImportPipeline::Config cfg;
-    cfg.parser.delimiter = ',';
-    cfg.parser.has_header = true;
-    cfg.skip_bad_rows = true;  // 要求跳过坏行
-    cfg.error_limit = 50;
+TEST(Pipeline, SkipBadRows)
+{
+	ImportPipeline::Config config;
+	config.parser.delimiter = ',';
+	config.parser.has_header = true;
+	config.skip_bad_rows = true;
+	config.error_limit = 50;
 
-    ImportPipeline pipeline(cfg, makeDefaultRules());
+	ImportPipeline pipeline(config, makeDefaultRules());
+	ImportPipeline::Result result;
+	EXPECT_NO_THROW(result = pipeline.importSync(dataPath("sample_dirty.csv").c_str()));
 
-    // sample_dirty.csv contains rows with column-count mismatches and bad data.
-    ImportPipeline::Result result;
-    try {
-        result = pipeline.importSync(dataPath("sample_dirty.csv").c_str());
-        std::cout << "Pipeline.SkipBadRows: imported=" << result.rows_imported
-                  << " skipped=" << result.rows_skipped
-                  << " errors=" << result.errors.size() << std::endl;
-    } catch (const std::exception& e) {
-        FAIL() << "importSync threw despite skip_bad_rows=true: " << e.what();
-    }
-
-    // If we reach here without exception, verify results
-    EXPECT_GT(result.rows_imported + result.rows_skipped, 0u)
-        << "Should have processed at least some rows";
+	EXPECT_EQ(result.rows_imported, 2U);
+	EXPECT_EQ(result.rows_skipped, 5U);
+	ASSERT_EQ(result.errors.size(), 5U);
+	ASSERT_FALSE(result.errors[0].cell_errors.empty());
+	EXPECT_EQ(result.errors[0].line_number, 4U);
+	EXPECT_EQ(result.errors[0].cell_errors[0].code, ErrorCode::ColumnCountMismatch);
 }
 
 // ============================================================
 // Pipeline.ErrorLimit (PASS)
 // ============================================================
-TEST(Pipeline, ErrorLimit) {
-    ImportPipeline::Config cfg;
-    cfg.parser.delimiter = ',';
-    cfg.parser.has_header = true;
-    cfg.skip_bad_rows = true;
-    cfg.error_limit = 3;  // Only collect 3 errors max
+TEST(Pipeline, ErrorLimit)
+{
+	ImportPipeline::Config config;
+	config.parser.delimiter = ',';
+	config.parser.has_header = true;
+	config.skip_bad_rows = true;
+	config.error_limit = 3;
 
-    // Use sample_dirty.csv which has multiple bad rows; the error
-    // limit should be respected.
-    ImportPipeline pipeline(cfg, makeDefaultRules());
-
-    try {
-        auto result = pipeline.importSync(dataPath("sample_dirty.csv").c_str());
-        EXPECT_LE(result.errors.size(), cfg.error_limit)
-            << "Error limit should cap the number of stored errors";
-    } catch (const std::exception& e) {
-        std::cout << "Skipping ErrorLimit test: " << e.what() << std::endl;
-        GTEST_SKIP() << "importSync threw an exception";
-    }
+	ImportPipeline pipeline(config, makeDefaultRules());
+	ImportPipeline::Result result;
+	EXPECT_NO_THROW(result = pipeline.importSync(dataPath("sample_dirty.csv").c_str()));
+	EXPECT_EQ(result.rows_imported, 2U);
+	EXPECT_EQ(result.rows_skipped, 5U);
+	EXPECT_EQ(result.errors.size(), config.error_limit);
 }
 
 // ============================================================

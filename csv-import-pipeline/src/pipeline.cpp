@@ -39,14 +39,36 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
     while (parser.readRow(row)) {
         ++stats_.total_lines;
 
-        // ---- 列数检查 ----
-        if (row.size() != parser.header().size()) {
-            std::ostringstream oss;
-            oss << "Column count mismatch at line " << parser.lineNumber()
-                << ": expected " << parser.header().size()
-                << " columns, got " << row.size();
-            throw std::runtime_error(oss.str());
-        }
+		if (row.size() != parser.header().size())
+		{
+			std::ostringstream message;
+			message << "Column count mismatch at line " << parser.lineNumber()
+				<< ": expected " << parser.header().size()
+				<< " columns, got " << row.size();
+
+			if (!cfg_.skip_bad_rows)
+				throw std::runtime_error(message.str());
+
+			RowError rowError;
+			rowError.line_number = static_cast<size_t>(parser.lineNumber());
+			std::ostringstream rawLine;
+			for (size_t index = 0; index < row.size(); ++index)
+			{
+				if (index > 0)
+					rawLine << ',';
+				rawLine << row[index];
+			}
+			rowError.raw_line = rawLine.str();
+
+			CellError cellError;
+			cellError.code = ErrorCode::ColumnCountMismatch;
+			cellError.message = message.str();
+			rowError.cell_errors.push_back(std::move(cellError));
+			if (cfg_.error_limit == 0 || result.errors.size() < cfg_.error_limit)
+				result.errors.push_back(std::move(rowError));
+			++result.rows_skipped;
+			continue;
+		}
 
         // ---- 校验与收集 ----
         validateAndCollect(row, parser.lineNumber(), result);
