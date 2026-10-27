@@ -280,6 +280,36 @@ TEST(Parser, OversizedLineDoesNotLeakIntoNextRow)
 	std::filesystem::remove(path);
 }
 
+TEST(Parser, SkipsManyEmptyLinesWithoutRecursion)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_many_empty_lines_" + std::to_string(uniqueValue) + ".csv");
+	constexpr std::size_t EMPTY_LINE_COUNT = 100000U;
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		for (std::size_t lineIndex = 0; lineIndex < EMPTY_LINE_COUNT; ++lineIndex)
+			output.put('\n');
+		output << "value\n";
+	}
+
+	csvp::CsvParser::Config config;
+	config.has_header = false;
+	{
+		csvp::CsvParser parser(config);
+		ASSERT_TRUE(parser.parse(path.string().c_str()));
+		csvp::Row row;
+		EXPECT_EQ(parser.readNext(row), csvp::CsvParser::ReadStatus::RowReadStatus);
+		EXPECT_EQ(parser.lineNumber(), EMPTY_LINE_COUNT + 1U);
+		ASSERT_EQ(row.size(), 1U);
+		EXPECT_EQ(row[0], "value");
+		EXPECT_EQ(parser.bytesRead(), EMPTY_LINE_COUNT + 6U);
+		EXPECT_EQ(parser.readNext(row), csvp::CsvParser::ReadStatus::EofReadStatus);
+	}
+	std::filesystem::remove(path);
+}
+
 TEST(Parser, LineNumberUsesFixedWidthType)
 {
 	static_assert(std::is_same_v<decltype(std::declval<const csvp::CsvParser &>().lineNumber()),

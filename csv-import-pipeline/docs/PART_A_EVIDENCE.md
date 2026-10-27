@@ -636,3 +636,32 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a18-robust-io`。
+
+## A-19：连续空行通过递归跳过导致栈增长
+
+### 复现与根因
+
+旧 `readNext()` 遇到空行时递归调用自身。连续空行数量直接决定调用栈深度，大量空行可能造成栈溢出；这种递归对逐行流式读取也没有必要。
+
+### 修复
+
+- 将“读取 → 处理 CRLF → 递增行号 → 跳过空行”放入同一个循环。
+- 空行使用 `continue`，不再创建新的函数调用栈帧。
+- 读取错误、解析错误、成功行和 EOF 的三态语义保持不变。
+- 新增 100,000 条连续空行后跟一条数据行的测试，核对字段、行号和字节数。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.SkipsManyEmptyLinesWithoutRecursion
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.SkipsManyEmptyLinesWithoutRecursion
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.SkipsManyEmptyLinesWithoutRecursion
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 1/1 通过，ASan 零报告；Release 与 Debug 全量回归均为 44/44。最终数据行号为 100,001，读取字节数为 100,006。
+
+### Git 证据
+
+Git 标签：`part-a-a19-iterative-empty-lines`。

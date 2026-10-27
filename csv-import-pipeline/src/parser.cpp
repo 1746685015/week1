@@ -117,31 +117,27 @@ CsvParser::ReadStatus CsvParser::readNext(Row &row)
 
 	row.clear();
 	m_lastError.clear();
-	if (!readLineFromFile())
+	while (true)
 	{
-		if (m_lastError.empty())
-			return ReadStatus::EofReadStatus;
+		if (!readLineFromFile())
+		{
+			if (m_lastError.empty())
+				return ReadStatus::EofReadStatus;
+			++m_lineNumber;
+			return ReadStatus::ErrorReadStatus;
+		}
+
+		if (m_lineEndedWithNewline && !m_lineBuffer.empty() && m_lineBuffer.back() == '\r')
+			m_lineBuffer.pop_back();
+
 		++m_lineNumber;
-		return ReadStatus::ErrorReadStatus;
+		if (m_lineBuffer.empty())
+			continue;
+
+		if (!splitLineToFields(m_lineBuffer.data(), m_lineBuffer.size(), row))
+			return ReadStatus::ErrorReadStatus;
+		return ReadStatus::RowReadStatus;
 	}
-
-	if (m_lineEndedWithNewline && !m_lineBuffer.empty() && m_lineBuffer.back() == '\r')
-		m_lineBuffer.pop_back();
-
-	if (m_lineBuffer.empty())
-	{
-		++m_lineNumber;
-		return readNext(row);
-	}
-
-	if (!splitLineToFields(m_lineBuffer.data(), m_lineBuffer.size(), row))
-	{
-		++m_lineNumber;
-		return ReadStatus::ErrorReadStatus;
-	}
-
-	++m_lineNumber;
-	return ReadStatus::RowReadStatus;
 }
 
 bool CsvParser::readLineFromFile()
