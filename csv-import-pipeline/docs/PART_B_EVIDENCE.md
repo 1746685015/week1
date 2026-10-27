@@ -183,3 +183,35 @@ clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++
 提交信息：`feat: support progress callback cancellation`。
 
 标签：`part-b-b4-progress-cancel`。
+
+## B5：协作停止、超时等待与 pending
+
+### 语义与实现
+
+- `shutdown(timeout)` 先发布原子停止信号，再通过条件变量至多等待指定时长；不强制终止线程。
+- worker 在每次读取前、每个 1000 行 callback 返回后检查停止信号，因此正常解析和回调阻塞解除后都能及时收尾。
+- `pendingCount()` 是锁保护的实时生命周期状态：活动 worker 为 1，完成为 0；超时返回不会伪造完成状态。
+- shutdown 若由 worker callback 自己调用，只发布停止信号并立即返回，避免线程等待自身。
+- worker 始终保存在成员 `std::thread` 中；没有 detach，析构或下一次启动会 join，不泄漏线程资源。
+
+### 确定性验证设计
+
+测试让 worker 在第 1000 行 callback 内等待测试门闩。主线程调用 `shutdown(50ms)`，验证其在 500 ms 安全上限内返回且 pending=1；随后打开门闩，验证 future 在 2 秒内就绪、部分结果为 1000 行、pending 最终为 0，并再次调用空闲 shutdown 验证幂等性。
+
+### 验证命令
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Concurrent.ShutdownNoDeadlock
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Concurrent.ShutdownNoDeadlock
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+```
+
+结果：Release/Debug 定向测试均为 1/1 通过；两种配置全量回归均为 52/52 通过、零失败，原先禁用的 shutdown 验收测试已经启用；clang-tidy 退出码 0，显示告警 0、错误 0。受控 callback 下 `shutdown(50ms)` 约 57 ms 完成整项测试，超时点 pending=1；门闩释放后 future 在期限内返回 1000 行部分结果，pending=0。
+
+### Git 证据
+
+提交信息：`feat: implement timed shutdown and pending count`。
+
+标签：`part-b-b5-timed-shutdown`。

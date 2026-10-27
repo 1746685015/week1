@@ -95,6 +95,9 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
     Row row;
 	while (true)
 	{
+		if (m_stopRequested.load(std::memory_order_acquire))
+			break;
+
 		const CsvParser::ReadStatus readStatus = parser.readNext(row);
 		if (readStatus == CsvParser::ReadStatus::EofReadStatus)
 			break;
@@ -156,6 +159,9 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
 			if (!(*progress)(processed))
 				break;
 		}
+
+		if (m_stopRequested.load(std::memory_order_acquire))
+			break;
     }
 
     // 后处理
@@ -252,21 +258,11 @@ std::future<ImportPipeline::Result> ImportPipeline::importStreaming(
 
 void ImportPipeline::shutdown(std::chrono::milliseconds timeout)
 {
-    // TODO: 让正在跑的导入停下来。
-    //
-    // 注意：这里做的是"打个招呼，让它自己收尾"，而不是把线程强行杀掉。
-    // 线程没办法从外面直接掐断，只能靠后台那边看到信号后主动退出。
-    //
-    // 具体要求：
-    // 1. 先把 stop_requested_ 置为 true，告诉后台线程"该收尾了"。
-    // 2. 最多等 timeout 毫秒。到点就返回，不管后台有没有彻底停干净，
-    //    绝不能无限期卡在这里。
-    // 3. 返回时，把还没完成的任务数量写进 pending_count_，方便调用方查看。
-    // 4. 整个过程不能死锁、不能泄漏线程或资源、不能崩溃。
-    // 5. 这一条是对后台线程的配合要求：它必须隔一段时间看一眼 stop_requested_，
-    //    否则如果它正卡在一个耗时的操作里（比如 std::stod 解析超长数字），
-    //    shutdown 就只能一直干等到 timeout 才返回。
+	std::unique_lock<std::mutex> lifecycleLock(m_lifecycleMutex);
 	m_stopRequested.store(true, std::memory_order_release);
+	if (m_worker.joinable() && m_worker.get_id() == std::this_thread::get_id())
+		return;
+
 	std::unique_lock<std::mutex> stateLock(m_stateMutex);
 	m_stateChanged.wait_for(stateLock, timeout, [this]()
 	{

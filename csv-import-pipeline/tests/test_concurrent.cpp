@@ -6,7 +6,10 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <future>
 #include <iostream>
+#include <mutex>
 #include <vector>
 
 namespace {
@@ -220,34 +223,59 @@ TEST(Concurrent, ReadsStatsDuringSyncImport)
 	EXPECT_EQ(result.rows_skipped, 2000U);
 }
 
-// ============================================================
-// Concurrent.DISABLED_ShutdownNoDeadlock（Part B 验收）
-// 把 importStreaming 和 shutdown 写完之后，去掉 DISABLED_ 前缀启用本用例。
-// 它检查的是：后台还在干活的时候调用 shutdown(timeout)，
-// 能不能在限定时间内正常返回——不卡死、不泄漏、不崩溃。
-// ============================================================
-TEST(Concurrent, DISABLED_ShutdownNoDeadlock) {
-    ImportPipeline::Config cfg;
-    cfg.parser.has_header = true;
-    cfg.skip_bad_rows = false;
-    ImportPipeline pipeline(cfg, makeDefaultRules());
+TEST(Concurrent, ShutdownNoDeadlock)
+{
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	ImportPipeline pipeline(config, makeDefaultRules());
+	std::mutex gateMutex;
+	std::condition_variable gateChanged;
+	bool callbackEntered = false;
+	bool releaseCallback = false;
 
-    // 启动流式导入：导入在后台线程里跑，这一行马上返回
-    auto future = pipeline.importStreaming(
-        dataPath("sample_100k.csv").c_str(),
-        [](size_t processed) -> bool {
-            // 处理到第 20000 行时返回 false，等于告诉后台"到此为止"
-            return processed < 20000;
-        });
+	std::future<ImportPipeline::Result> future = pipeline.importStreaming(
+		dataPath("sample_100k.csv").c_str(),
+		[&gateMutex, &gateChanged, &callbackEntered, &releaseCallback](std::size_t processed)
+		{
+			if (processed == 1000U)
+			{
+				std::unique_lock<std::mutex> gateLock(gateMutex);
+				callbackEntered = true;
+				gateChanged.notify_all();
+				gateChanged.wait(gateLock, [&releaseCallback]()
+				{
+					return releaseCallback;
+				});
+			}
+			return true;
+		});
 
-    // 刚启动就请求停止，最多只等 500 毫秒
-    pipeline.shutdown(std::chrono::milliseconds(500));
+	{
+		std::unique_lock<std::mutex> gateLock(gateMutex);
+		ASSERT_TRUE(gateChanged.wait_for(gateLock, std::chrono::seconds(2),
+			[&callbackEntered]()
+			{
+				return callbackEntered;
+			}));
+	}
 
-    // 取结果：如果这一行卡住，就说明死锁了
-    auto result = future.get();
-    std::cout << "Concurrent.DISABLED_ShutdownNoDeadlock: imported="
-              << result.rows_imported
-              << " (expected: shutdown returned without deadlock)" << std::endl;
+	const auto startTime = std::chrono::steady_clock::now();
+	pipeline.shutdown(std::chrono::milliseconds(50));
+	const auto elapsed = std::chrono::steady_clock::now() - startTime;
+	EXPECT_LT(elapsed, std::chrono::milliseconds(500));
+	EXPECT_EQ(pipeline.pendingCount(), 1U);
+
+	{
+		std::lock_guard<std::mutex> gateLock(gateMutex);
+		releaseCallback = true;
+	}
+	gateChanged.notify_all();
+
+	ASSERT_EQ(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
+	const ImportPipeline::Result result = future.get();
+	EXPECT_EQ(result.rows_imported + result.rows_skipped, 1000U);
+	EXPECT_EQ(pipeline.pendingCount(), 0U);
+	pipeline.shutdown(std::chrono::milliseconds(50));
 }
 
 } // anonymous namespace
