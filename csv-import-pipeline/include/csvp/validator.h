@@ -2,6 +2,8 @@
 #define CSVP_VALIDATOR_H_
 
 #include <cstddef>
+#include <optional>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -20,6 +22,7 @@ public:
 	std::vector<CellError> validate(const Row &row) const;
 	CellError validateField(std::size_t columnIndex, const std::string &rawValue,
 		const FieldRule &rule) const;
+	bool getConfigurationError(std::string &errorMessage) const;
 
 	const std::vector<FieldRule> &rules() const
 	{
@@ -35,10 +38,13 @@ private:
 	bool validateType(const std::string &value, FieldType type, std::string &errorMessage) const;
 	bool validateRange(const std::string &value, const FieldRule &rule,
 		std::string &errorMessage) const;
-	bool validateRegex(const std::string &value, const std::string &pattern,
-		std::string &errorMessage) const;
+	bool validateRegex(std::size_t columnIndex, const std::string &value,
+		const std::string &pattern, std::string &errorMessage) const;
+	void compileRegex(const FieldRule &rule);
 
 	std::vector<FieldRule> m_rules;
+	std::vector<std::optional<std::regex>> m_compiledRegex;
+	std::vector<std::string> m_regexErrors;
 };
 
 } // namespace csvp

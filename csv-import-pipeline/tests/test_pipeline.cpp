@@ -258,10 +258,10 @@ TEST(Pipeline, InvalidRegexErrorIsTraceable)
 	const ImportPipeline::Result result = pipeline.importSync(path.string().c_str());
 
 	EXPECT_EQ(result.rows_imported, 0U);
-	EXPECT_EQ(result.rows_skipped, 1U);
+	EXPECT_EQ(result.rows_skipped, 0U);
 	ASSERT_EQ(result.errors.size(), 1U);
-	EXPECT_EQ(result.errors[0].line_number, 2U);
-	EXPECT_EQ(result.errors[0].raw_line, "text");
+	EXPECT_EQ(result.errors[0].line_number, 0U);
+	EXPECT_TRUE(result.errors[0].raw_line.empty());
 	ASSERT_EQ(result.errors[0].cell_errors.size(), 1U);
 	EXPECT_EQ(result.errors[0].cell_errors[0].code, ErrorCode::RegexMismatch);
 	EXPECT_NE(result.errors[0].cell_errors[0].message.find("Invalid regex pattern"),

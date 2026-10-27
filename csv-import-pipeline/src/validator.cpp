@@ -49,11 +49,18 @@ bool ParseDouble(const std::string &text, double &value)
 void FieldValidator::addRule(const FieldRule &rule)
 {
 	m_rules.push_back(rule);
+	compileRegex(rule);
 }
 
 void FieldValidator::addRules(const std::vector<FieldRule> &rules)
 {
 	m_rules = rules;
+	m_compiledRegex.clear();
+	m_regexErrors.clear();
+	m_compiledRegex.reserve(m_rules.size());
+	m_regexErrors.reserve(m_rules.size());
+	for (const FieldRule &rule : m_rules)
+		compileRegex(rule);
 }
 
 std::vector<CellError> FieldValidator::validate(const Row &row) const
@@ -119,12 +126,26 @@ CellError FieldValidator::validateField(std::size_t columnIndex, const std::stri
 		error.message = std::move(errorMessage);
 		return error;
 	}
-	if (!rule.regex.empty() && !validateRegex(rawValue, rule.regex, errorMessage))
+	if (!rule.regex.empty() && !validateRegex(columnIndex, rawValue, rule.regex, errorMessage))
 	{
 		error.code = ErrorCode::RegexMismatch;
 		error.message = std::move(errorMessage);
 	}
 	return error;
+}
+
+bool FieldValidator::getConfigurationError(std::string &errorMessage) const
+{
+	for (const std::string &regexError : m_regexErrors)
+	{
+		if (!regexError.empty())
+		{
+			errorMessage = regexError;
+			return true;
+		}
+	}
+	errorMessage.clear();
+	return false;
 }
 
 bool FieldValidator::validateType(const std::string &value, FieldType type,
@@ -204,9 +225,27 @@ bool FieldValidator::validateRange(const std::string &value, const FieldRule &ru
 	return false;
 }
 
-bool FieldValidator::validateRegex(const std::string &value, const std::string &pattern,
-	std::string &errorMessage) const
+bool FieldValidator::validateRegex(std::size_t columnIndex, const std::string &value,
+	const std::string &pattern, std::string &errorMessage) const
 {
+	if (columnIndex < m_rules.size() && columnIndex < m_compiledRegex.size()
+		&& columnIndex < m_regexErrors.size()
+		&& m_rules[columnIndex].regex == pattern)
+	{
+		if (!m_regexErrors[columnIndex].empty())
+		{
+			errorMessage = m_regexErrors[columnIndex];
+			return false;
+		}
+		if (m_compiledRegex[columnIndex]
+			&& !std::regex_match(value, *m_compiledRegex[columnIndex]))
+		{
+			errorMessage = "Value does not match pattern: " + pattern;
+			return false;
+		}
+		return true;
+	}
+
 	try
 	{
 		const std::regex expression(pattern);
@@ -222,6 +261,23 @@ bool FieldValidator::validateRegex(const std::string &value, const std::string &
 		return false;
 	}
 	return true;
+}
+
+void FieldValidator::compileRegex(const FieldRule &rule)
+{
+	m_compiledRegex.emplace_back();
+	m_regexErrors.emplace_back();
+	if (rule.regex.empty())
+		return;
+
+	try
+	{
+		m_compiledRegex.back().emplace(rule.regex);
+	}
+	catch (const std::regex_error &error)
+	{
+		m_regexErrors.back() = std::string("Invalid regex pattern: ") + error.what();
+	}
 }
 
 } // namespace csvp

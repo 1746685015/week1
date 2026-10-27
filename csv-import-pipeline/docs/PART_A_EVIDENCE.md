@@ -694,3 +694,44 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a20-consistent-trim`。
+
+## A-21/A-22：与既有修复重复的清单项
+
+- A-21（`toBool()` 无法区分 false 与非法值）与正式缺陷 A-5 相同，已由 `tryToBool()` 和 `Row.TypedConversions` 完成并在 `part-a-a5-safe-conversions` 留证。
+- A-22（CSV 引号格式边界）与 A-8 相同，转义引号、未引用字段中的非法引号、关闭引号后字符、末字段、空字段和未闭合引号已由 `part-a-a8-quoted-fields` 覆盖。
+- 为保持“一项实际修复一次提交”，本处不重复修改代码或制造重复提交。
+
+## A-23：正则规则在热路径中重复编译
+
+### 复现与基线
+
+旧 `validateRegex()` 对每个字段、每一行都重新构造 `std::regex`。同一 Release 构建下固定执行 50,000 次相同邮件正则校验，三次耗时为 286.817、282.243、284.323 ms，平均 284.461 ms。
+
+### 修复
+
+- `addRule/addRules` 注册规则时预编译正则，并按列缓存 `std::regex`。
+- 有效数据行直接复用缓存表达式；公共 `validateField()` 接收未注册规则时仍保留兼容的临时编译路径。
+- 无效正则只编译一次并缓存错误，不在每行重复抛出和捕获 `regex_error`。
+- 管道在读取数据行前检查规则配置，无效正则作为行号 0 的配置错误返回，不产生虚假的跳过行。
+- 新增固定工作负载和非法正则配置测试。
+
+### 性能结果
+
+同一设备、同一 Release 二进制测试代码、同样 50,000 次校验，缓存后三次为 152.983、149.390、147.694 ms，平均 150.022 ms。相对基线耗时下降约 47.3%，速度约为 1.90 倍。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Validator.RegexPerformanceWorkload --gtest_repeat=3
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Validator.RegexPerformanceWorkload:Validator.ReportsInvalidRegexConfiguration:Pipeline.InvalidRegexErrorIsTraceable
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Validator.RegexPerformanceWorkload:Validator.ReportsInvalidRegexConfiguration:Pipeline.InvalidRegexErrorIsTraceable
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Validator.RegexPerformanceWorkload:Validator.ReportsInvalidRegexConfiguration:Pipeline.InvalidRegexErrorIsTraceable
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 3/3 通过，ASan 零报告；Release 与 Debug 全量回归均为 47/47。
+
+### Git 证据
+
+Git 标签：`part-a-a23-regex-cache`。

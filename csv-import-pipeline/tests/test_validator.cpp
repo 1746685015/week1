@@ -2,6 +2,8 @@
 #include "csvp/row.h"
 
 #include <gtest/gtest.h>
+#include <chrono>
+#include <iostream>
 #include <vector>
 #include <string>
 
@@ -243,6 +245,43 @@ TEST(Validator, NumericRangeIncludesExactBoundaries)
 	EXPECT_EQ(doubleValidator.validateField(0U, "1.0", doubleRule).code, csvp::ErrorCode::Ok);
 	EXPECT_EQ(doubleValidator.validateField(0U, "1.0001", doubleRule).code,
 		csvp::ErrorCode::RangeError);
+}
+
+TEST(Validator, RegexPerformanceWorkload)
+{
+	csvp::FieldRule rule;
+	rule.name = "email";
+	rule.type = csvp::FieldType::String;
+	rule.regex = R"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})";
+	csvp::FieldValidator validator;
+	validator.addRule(rule);
+	const csvp::Row row({"alice@example.com"});
+	constexpr std::size_t ITERATION_COUNT = 50000U;
+
+	const auto startTime = std::chrono::steady_clock::now();
+	for (std::size_t iteration = 0; iteration < ITERATION_COUNT; ++iteration)
+		ASSERT_TRUE(validator.validate(row).empty());
+	const auto finishTime = std::chrono::steady_clock::now();
+	const double elapsedMilliseconds =
+		std::chrono::duration<double, std::milli>(finishTime - startTime).count();
+	std::cout << "RegexPerformanceWorkload: " << ITERATION_COUNT
+		<< " validations in " << elapsedMilliseconds << " ms" << std::endl;
+}
+
+TEST(Validator, ReportsInvalidRegexConfiguration)
+{
+	csvp::FieldRule rule;
+	rule.name = "value";
+	rule.regex = "[";
+	csvp::FieldValidator validator;
+	validator.addRule(rule);
+
+	std::string errorMessage;
+	EXPECT_TRUE(validator.getConfigurationError(errorMessage));
+	EXPECT_NE(errorMessage.find("Invalid regex pattern"), std::string::npos);
+	const csvp::CellError error = validator.validateField(0U, "value", rule);
+	EXPECT_EQ(error.code, csvp::ErrorCode::RegexMismatch);
+	EXPECT_EQ(error.message, errorMessage);
 }
 
 } // anonymous namespace

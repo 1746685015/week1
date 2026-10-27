@@ -60,6 +60,22 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 		return result;
 	}
 
+	std::string configurationError;
+	if (validator_.getConfigurationError(configurationError))
+	{
+		RowError schemaError;
+		CellError cellError;
+		cellError.code = ErrorCode::RegexMismatch;
+		cellError.message = configurationError;
+		schemaError.cell_errors.push_back(std::move(cellError));
+		result.errors.push_back(std::move(schemaError));
+		m_bytesRead.store(parser.bytesRead(), std::memory_order_relaxed);
+		const auto finishTime = std::chrono::steady_clock::now();
+		result.elapsed_ms = std::chrono::duration<double, std::milli>(finishTime - t0).count();
+		m_elapsedMilliseconds.store(result.elapsed_ms, std::memory_order_relaxed);
+		return result;
+	}
+
     Row row;
 	while (true)
 	{
