@@ -56,8 +56,8 @@ public:
 	}
 
 private:
-	static constexpr std::size_t READ_BUFFER_SIZE = 64U * 1024U;
-	static constexpr std::size_t MAX_LINE_SIZE = 16U * 1024U * 1024U;
+	static constexpr std::size_t READ_BUFFER_SIZE = static_cast<std::size_t>(64U) * 1024U;
+	static constexpr std::size_t MAX_LINE_SIZE = static_cast<std::size_t>(16U) * 1024U * 1024U;
 
 	bool readLineFromFile();
 	bool discardLineRemainder();

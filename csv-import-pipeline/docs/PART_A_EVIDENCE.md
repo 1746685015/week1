@@ -788,3 +788,31 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a25-document-links`。
+
+## A-26：缓冲区大小常量先以窄类型执行乘法
+
+### 复现与根因
+
+在建议工具 `clang-tidy 23.1.4` 下，以 `clang-analyzer-*` 和 `bugprone-*` 检查 `src/parser.cpp`，`READ_BUFFER_SIZE` 与 `MAX_LINE_SIZE` 触发 `bugprone-implicit-widening-of-multiplication-result`。原表达式中的操作数都是 `unsigned int`，因此乘法完成后才隐式扩宽为 `std::size_t`；当前常量仍在范围内，但扩大配置时可能先在窄类型中溢出。
+
+### 修复
+
+- 把每个乘法表达式的首个操作数显式转换为 `std::size_t`，使整条常量表达式从第一步起就在目标宽度计算。
+- 保持常量值、公开接口和运行行为不变。
+- 修改遵循 WPS C++ 规范的 Tab 缩进与局部最小变更原则。
+
+### 验证
+
+```powershell
+clang-tidy src/parser.cpp src/validator.cpp src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+cmake --build build-review-baseline --config Release --parallel
+cmake --build build-review-baseline --config Debug --parallel
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：`parser.cpp` 的 clang-tidy 显示告警 0、错误 0；Release/Debug 全量回归均为 47/47 通过、零失败。随后对全部生产源文件继续审查时发现的其他类别告警另列为 A-27 和 A-28，不混入本项提交。
+
+### Git 证据
+
+Git 标签：`part-a-a26-size-constant-types`。
