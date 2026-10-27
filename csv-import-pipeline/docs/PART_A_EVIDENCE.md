@@ -872,3 +872,36 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a28-checked-regex-cache`。
+
+## Part A 最终验收汇总（2026-10-27）
+
+### 验收命令
+
+```powershell
+clang-tidy src/parser.cpp src/validator.cpp src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+cmake --build build-review-baseline --config Release --parallel
+cmake --build build-review-baseline --config Debug --parallel
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+cmake --build build-review-asan-msvc --config Debug --parallel
+ctest --test-dir build-review-asan-msvc -C Debug --output-on-failure
+build-review-baseline/Release/csvp_tests.exe --gtest_repeat=100 --gtest_shuffle
+```
+
+### 最终结果
+
+- Release `/W4`：47/47 个启用测试通过，零失败。
+- Debug `/W4`：47/47 个启用测试通过，零失败，行为与 Release 一致。
+- MSVC ASan Debug：47/47 个启用测试通过，零失败、零 ASan 报告。链接器仅提示 ASan 元数据使 `/INCREMENTAL` 被忽略（LNK4300），不属于源码告警。
+- clang-tidy 23.1.4：对 `parser.cpp`、`validator.cpp`、`pipeline.cpp` 启用 `clang-analyzer-*` 与 `bugprone-*`，退出码 0，显示告警 0、错误 0。
+- 压力复跑：退出码 0，100/100 轮通过；每轮 47 个测试，失败标记 0。
+- VS Code IntelliSense：外层工作区 `.vscode/settings.json` 已指定 CMake Tools、MSVC x64、C++17 和实际 include 路径；该文件位于 Git 仓库外，不随作业提交。用户已确认编辑器不再显示错误。
+- 当前唯一禁用测试是 `Concurrent.DISABLED_ShutdownNoDeadlock`，属于尚未实现的 Part B，不计入 Part A 失败。
+
+### 范围说明
+
+正式清单 A-1 至 A-25 已逐项审计；A-21/A-22 分别由 A-5/A-8 的同一修复覆盖，A-24 因作业没有定义 `default_val` 契约而保留接口、不擅自改变行为。继续使用建议工具审查后新增并修复 A-26 至 A-28，均独立提交、验证、打标签并推送。
+
+### Git 证据
+
+最终验收标签：`part-a-acceptance`。
