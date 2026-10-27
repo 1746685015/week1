@@ -72,7 +72,7 @@ TEST(Parser, HeaderMapping) {
 
 // ============================================================
 // Parser.NoTrailingNewline
-// 已知现象见 docs/KNOWN_ISSUES.md #1。修复后把前缀 DISABLED_ 去掉以启用验证。
+// Regression evidence: docs/PART_A_EVIDENCE.md, A-1.
 // ============================================================
 TEST(Parser, NoTrailingNewline)
 {
@@ -101,7 +101,7 @@ TEST(Parser, NoTrailingNewline)
 
 // ============================================================
 // Parser.ReentryState
-// 已知现象见 docs/KNOWN_ISSUES.md #2。修复后去掉前缀 DISABLED_ 以启用验证。
+// Regression evidence: docs/PART_A_EVIDENCE.md, A-2.
 // ============================================================
 TEST(Parser, ReentryState)
 {
@@ -170,7 +170,7 @@ TEST(Parser, RejectsNullAndEmptyPaths)
 
 // ============================================================
 // Parser.ChineseGBKEncoding
-// 已知现象见 docs/KNOWN_ISSUES.md #3。修复后去掉前缀 DISABLED_ 以启用验证。
+// Regression evidence: docs/PART_A_EVIDENCE.md, A-4.
 // ============================================================
 TEST(Parser, ChineseGBKEncoding)
 {
@@ -334,7 +334,7 @@ TEST(Parser, EmptyFile) {
 
 // ============================================================
 // Parser.QuotedEscapedQuote
-// 现象见 docs/KNOWN_ISSUES.md #9。修复后去掉前缀 DISABLED_ 启用验证。
+// Regression evidence: docs/PART_A_EVIDENCE.md, A-8.
 // ============================================================
 TEST(Parser, QuotedEscapedQuote) {
     csvp::CsvParser::Config cfg;
@@ -471,7 +471,7 @@ TEST(Parser, RejectsMalformedQuotes)
 
 // ============================================================
 // Parser.CRLFLFMixedCR
-// 现象见 docs/KNOWN_ISSUES.md #10。修复后去掉前缀 DISABLED_ 启用验证。
+// Regression evidence: docs/PART_A_EVIDENCE.md, A-9.
 // ============================================================
 TEST(Parser, CRLFLFMixedCR)
 {

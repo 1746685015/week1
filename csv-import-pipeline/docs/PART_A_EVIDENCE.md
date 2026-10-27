@@ -759,3 +759,32 @@ rg -n -i "default_val|default value|默认值" tmp/pdfs/weekly-homework-layout.t
 ### Git 证据
 
 Git 标签：`part-a-a24-default-value-audit`。
+
+## A-25：文档引用与实际交付物不一致
+
+### 复现与根因
+
+`README.md` 和五处解析器回归测试注释引用了 `docs/KNOWN_ISSUES.md`，但仓库中没有该文件。README 的目录树仍列出这个不存在的文件，并把所有 `DISABLED_` 用例描述为 Part A 缺陷线索；实际上 Part A 用例已经启用，当前唯一禁用的测试属于 Part B。
+
+### 修复
+
+- README 改为链接真实存在的 `docs/PART_A_EVIDENCE.md`，并同步目录树。
+- README 明确 Part A 回归用例已经启用，当前禁用项属于尚未实现的 Part B。
+- 五处测试注释分别指向证据报告中的 A-1、A-2、A-4、A-8 和 A-9；注释按 WPS C++ 规范使用英文。
+- 不伪造老师原始的 `KNOWN_ISSUES.md`，只维护本项目实际生成的证据文件。
+
+### 验证
+
+```powershell
+rg -n "KNOWN_ISSUES|PART_A_EVIDENCE|DISABLED_" csv-import-pipeline/README.md csv-import-pipeline/tests csv-import-pipeline/docs
+cmake --build build-review-baseline --config Release --parallel
+cmake --build build-review-baseline --config Debug --parallel
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：README 与测试中不存在 `KNOWN_ISSUES.md` 残留引用；README 链接的证据文件存在；唯一 `DISABLED_` 测试为 `Concurrent.DISABLED_ShutdownNoDeadlock`（Part B）。Release/Debug 全量回归均为 47/47 通过、零失败。
+
+### Git 证据
+
+Git 标签：`part-a-a25-document-links`。

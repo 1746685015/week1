@@ -179,9 +179,9 @@ std::cout << "Imported: " << result.rows_imported
 
 ## 缺陷定位指引
 
-> 本仓库是有意保留了若干缺陷的**遗留代码**。部分缺陷有失败测试直接暴露，部分**只给出现象描述**（见 `docs/KNOWN_ISSUES.md`），需要你**自己写复现用例**去定位根因。
+> 本仓库最初有意保留了若干缺陷。Part A 的修复过程、回归用例和验证结果记录在 [docs/PART_A_EVIDENCE.md](docs/PART_A_EVIDENCE.md)。
 >
-> 所有标 `DISABLED_` 前缀的测试是**隐藏验收用例**——修好后去掉前缀即可验证。
+> Part A 的回归用例均已启用；当前保留的 `DISABLED_` 用例属于尚未实现的 Part B 验收项。
 
 ## 目录结构
 
@@ -191,7 +191,7 @@ csv-import-pipeline/
 ├── build_msvc.bat             # 一键配置 + 构建（MSVC）
 ├── README.md
 ├── docs/
-│   ├── KNOWN_ISSUES.md         # ⭐ 已知现象清单（缺陷定位线索）
+│   ├── PART_A_EVIDENCE.md      # Part A 修复与验证证据
 │   └── REPORT_TEMPLATE.md      # 交付报告模板
 ├── include/csvp/
 │   ├── parser.h          # CSV 解析器
