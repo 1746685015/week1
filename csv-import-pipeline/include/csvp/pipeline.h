@@ -9,6 +9,7 @@
 #include <functional>
 #include <future>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -18,6 +19,8 @@
 
 namespace csvp {
 
+class ErrorSink;
+
 class ImportPipeline
 {
 public:
@@ -26,14 +29,21 @@ public:
 		CsvParser::Config parser;
 		bool skip_bad_rows = false;
 		std::size_t error_limit = 0;
+		std::string error_log_path;
 	};
 
 	struct Result
 	{
 		std::size_t rows_imported = 0;
 		std::size_t rows_skipped = 0;
+		std::size_t total_error_count = 0;
 		std::vector<RowError> errors;
+		std::string error_log_path;
+		std::string failure_message;
 		double elapsed_ms = 0.0;
+		bool completed = false;
+		bool canceled = false;
+		bool error_log_complete = true;
 	};
 
 	ImportPipeline() = default;
@@ -55,8 +65,10 @@ private:
 
 	Result runImport(const char *filepath,
 		const std::function<bool(std::size_t)> *progress);
-	void validateAndCollect(Row &row, std::uint64_t lineNumber, const CsvParser &parser,
-		Result &result);
+	bool validateAndCollect(Row &row, std::uint64_t lineNumber, const CsvParser &parser,
+		ErrorSink *errorSink, Result &result);
+	bool recordRowError(RowError rowError, ErrorSink *errorSink, Result &result);
+	void finishErrorLog(ErrorSink *errorSink, Result &result);
 	void completeSynchronousTask();
 	void completeStreamingTask();
 	void joinWorker();

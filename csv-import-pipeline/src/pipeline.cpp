@@ -1,9 +1,10 @@
 #include "csvp/pipeline.h"
 
-#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+
+#include "csvp/error_sink.h"
 
 namespace csvp {
 
@@ -58,26 +59,58 @@ ImportPipeline::Result ImportPipeline::importSync(const char *filepath)
 ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
 	const std::function<bool(std::size_t)> *progress)
 {
-    Result result;
-    auto t0 = std::chrono::steady_clock::now();
+	Result result;
+	const auto startTime = std::chrono::steady_clock::now();
 	m_totalLines.store(0, std::memory_order_relaxed);
 	m_bytesRead.store(0, std::memory_order_relaxed);
 	m_rowsImported.store(0, std::memory_order_relaxed);
 	m_rowsSkipped.store(0, std::memory_order_relaxed);
 	m_elapsedMilliseconds.store(0.0, std::memory_order_relaxed);
 
-    CsvParser parser(m_config.parser);
-    if (!parser.parse(filepath)) {
-        // 文件打开或表头解析失败
-        RowError fatal;
-        fatal.line_number = 0;
-        fatal.raw_line = parser.lastError();
-        result.errors.push_back(std::move(fatal));
+	ErrorSink errorSink;
+	ErrorSink *activeErrorSink = nullptr;
+	result.error_log_path = m_config.error_log_path;
+	if (!m_config.error_log_path.empty())
+	{
+		result.error_log_complete = false;
+		std::string errorMessage;
+		if (!errorSink.open(m_config.error_log_path, errorMessage))
+		{
+			result.failure_message = errorMessage;
+			const auto finishTime = std::chrono::steady_clock::now();
+			result.elapsed_ms =
+				std::chrono::duration<double, std::milli>(finishTime - startTime).count();
+			m_elapsedMilliseconds.store(result.elapsed_ms, std::memory_order_relaxed);
+			return result;
+		}
+		activeErrorSink = &errorSink;
+	}
+
+	CsvParser parser(m_config.parser);
+	auto finishResult = [&]()
+	{
+		finishErrorLog(activeErrorSink, result);
+		m_bytesRead.store(parser.bytesRead(), std::memory_order_relaxed);
 		const auto finishTime = std::chrono::steady_clock::now();
-		result.elapsed_ms = std::chrono::duration<double, std::milli>(finishTime - t0).count();
+		result.elapsed_ms =
+			std::chrono::duration<double, std::milli>(finishTime - startTime).count();
 		m_elapsedMilliseconds.store(result.elapsed_ms, std::memory_order_relaxed);
-        return result;
-    }
+	};
+
+	if (!parser.parse(filepath))
+	{
+		RowError fatalError;
+		fatalError.line_number = 0U;
+		fatalError.raw_line = parser.lastError();
+		CellError cellError;
+		cellError.code = ErrorCode::FileNotOpen;
+		cellError.message = parser.lastError();
+		fatalError.cell_errors.push_back(std::move(cellError));
+		(void)recordRowError(std::move(fatalError), activeErrorSink, result);
+		result.failure_message = parser.lastError();
+		finishResult();
+		return result;
+	}
 
 	const std::size_t expectedColumnCount = m_config.parser.has_header
 		? parser.header().size()
@@ -94,11 +127,9 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
 		cellError.code = ErrorCode::ColumnCountMismatch;
 		cellError.message = message.str();
 		schemaError.cell_errors.push_back(std::move(cellError));
-		result.errors.push_back(std::move(schemaError));
-		m_bytesRead.store(parser.bytesRead(), std::memory_order_relaxed);
-		const auto finishTime = std::chrono::steady_clock::now();
-		result.elapsed_ms = std::chrono::duration<double, std::milli>(finishTime - t0).count();
-		m_elapsedMilliseconds.store(result.elapsed_ms, std::memory_order_relaxed);
+		(void)recordRowError(std::move(schemaError), activeErrorSink, result);
+		result.failure_message = message.str();
+		finishResult();
 		return result;
 	}
 
@@ -110,33 +141,37 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
 		cellError.code = ErrorCode::RegexMismatch;
 		cellError.message = configurationError;
 		schemaError.cell_errors.push_back(std::move(cellError));
-		result.errors.push_back(std::move(schemaError));
-		m_bytesRead.store(parser.bytesRead(), std::memory_order_relaxed);
-		const auto finishTime = std::chrono::steady_clock::now();
-		result.elapsed_ms = std::chrono::duration<double, std::milli>(finishTime - t0).count();
-		m_elapsedMilliseconds.store(result.elapsed_ms, std::memory_order_relaxed);
+		(void)recordRowError(std::move(schemaError), activeErrorSink, result);
+		result.failure_message = configurationError;
+		finishResult();
 		return result;
 	}
 
-    Row row;
+	Row row;
+	bool reachedEnd = false;
 	while (true)
 	{
 		if (m_stopRequested.load(std::memory_order_acquire))
+		{
+			result.canceled = true;
 			break;
+		}
 
 		const CsvParser::ReadStatus readStatus = parser.readNext(row);
 		if (readStatus == CsvParser::ReadStatus::EofReadStatus)
+		{
+			reachedEnd = true;
 			break;
+		}
 
 		m_totalLines.fetch_add(1, std::memory_order_relaxed);
 		m_bytesRead.store(parser.bytesRead(), std::memory_order_relaxed);
+		bool continueImport = true;
 		if (readStatus == CsvParser::ReadStatus::ErrorReadStatus)
 		{
 			std::ostringstream message;
 			message << "CSV parse error at line " << parser.lineNumber()
 				<< ": " << parser.lastError();
-			if (!m_config.skip_bad_rows)
-				throw std::runtime_error(message.str());
 
 			RowError rowError;
 			rowError.line_number = parser.lineNumber();
@@ -145,9 +180,18 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
 			cellError.code = ErrorCode::ParseError;
 			cellError.message = message.str();
 			rowError.cell_errors.push_back(std::move(cellError));
-			if (m_config.error_limit == 0 || result.errors.size() < m_config.error_limit)
-				result.errors.push_back(std::move(rowError));
 			++result.rows_skipped;
+			continueImport = recordRowError(std::move(rowError), activeErrorSink, result);
+			if (!continueImport)
+				result.failure_message = result.failure_message.empty()
+					? "Failed to persist a parse error"
+					: result.failure_message;
+			if (!m_config.skip_bad_rows)
+			{
+				if (!continueImport)
+					throw std::runtime_error(result.failure_message);
+				throw std::runtime_error(message.str());
+			}
 		}
 		else if (row.size() != expectedColumnCount)
 		{
@@ -155,9 +199,6 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
 			message << "Column count mismatch at line " << parser.lineNumber()
 				<< ": expected " << expectedColumnCount
 				<< " columns, got " << row.size();
-
-			if (!m_config.skip_bad_rows)
-				throw std::runtime_error(message.str());
 
 			RowError rowError;
 			rowError.line_number = parser.lineNumber();
@@ -167,67 +208,106 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
 			cellError.code = ErrorCode::ColumnCountMismatch;
 			cellError.message = message.str();
 			rowError.cell_errors.push_back(std::move(cellError));
-			if (m_config.error_limit == 0 || result.errors.size() < m_config.error_limit)
-				result.errors.push_back(std::move(rowError));
 			++result.rows_skipped;
+			continueImport = recordRowError(std::move(rowError), activeErrorSink, result);
+			if (!m_config.skip_bad_rows)
+			{
+				if (!continueImport)
+					throw std::runtime_error(result.failure_message);
+				throw std::runtime_error(message.str());
+			}
 		}
 		else
 		{
-			validateAndCollect(row, parser.lineNumber(), parser, result);
+			continueImport = validateAndCollect(row, parser.lineNumber(), parser,
+				activeErrorSink, result);
 		}
 
 		m_rowsImported.store(result.rows_imported, std::memory_order_relaxed);
 		m_rowsSkipped.store(result.rows_skipped, std::memory_order_relaxed);
+		if (!continueImport)
+			break;
+
 		const std::size_t processed = result.rows_imported + result.rows_skipped;
 		if (progress != nullptr && static_cast<bool>(*progress)
 			&& processed % PROGRESS_INTERVAL == 0)
 		{
 			if (!(*progress)(processed))
+			{
+				result.canceled = true;
 				break;
+			}
 		}
 
 		if (m_stopRequested.load(std::memory_order_acquire))
+		{
+			result.canceled = true;
 			break;
-    }
+		}
+	}
 
-    // 后处理
-	m_bytesRead.store(parser.bytesRead(), std::memory_order_relaxed);
-
-    auto t1 = std::chrono::steady_clock::now();
-    result.elapsed_ms =
-        std::chrono::duration<double, std::milli>(t1 - t0).count();
-	m_elapsedMilliseconds.store(result.elapsed_ms, std::memory_order_relaxed);
-
-    return result;
+	result.completed = reachedEnd && result.failure_message.empty();
+	finishResult();
+	return result;
 }
 
-// ============================================================
-// validateAndCollect
-// ============================================================
-
-void ImportPipeline::validateAndCollect(Row &row, std::uint64_t lineNumber,
-	const CsvParser &parser, Result &result)
+bool ImportPipeline::validateAndCollect(Row &row, std::uint64_t lineNumber,
+	const CsvParser &parser, ErrorSink *errorSink, Result &result)
 {
 	std::vector<CellError> cellErrors = m_validator.validate(row);
 	if (cellErrors.empty())
 	{
 		++result.rows_imported;
-		return;
+		return true;
 	}
 
 	RowError rowError;
 	rowError.line_number = lineNumber;
 	parser.getRawLine(rowError.raw_line);
 	rowError.cell_errors = std::move(cellErrors);
+	++result.rows_skipped;
+	const bool recorded = recordRowError(std::move(rowError), errorSink, result);
+	if (!recorded)
+		return false;
 	if (!m_config.skip_bad_rows)
-	{
-		result.errors.push_back(std::move(rowError));
 		throw std::runtime_error("Validation failed and skip_bad_rows is disabled");
-	}
+	return true;
+}
 
+bool ImportPipeline::recordRowError(RowError rowError, ErrorSink *errorSink, Result &result)
+{
+	++result.total_error_count;
+	bool recorded = true;
+	if (errorSink != nullptr)
+	{
+		std::string errorMessage;
+		if (!errorSink->write(rowError, errorMessage))
+		{
+			result.failure_message = errorMessage;
+			result.error_log_complete = false;
+			recorded = false;
+		}
+	}
 	if (m_config.error_limit == 0 || result.errors.size() < m_config.error_limit)
 		result.errors.push_back(std::move(rowError));
-	++result.rows_skipped;
+	return recorded;
+}
+
+void ImportPipeline::finishErrorLog(ErrorSink *errorSink, Result &result)
+{
+	if (errorSink == nullptr)
+		return;
+
+	std::string errorMessage;
+	if (errorSink->close(errorMessage))
+	{
+		result.error_log_complete = true;
+		return;
+	}
+	result.error_log_complete = false;
+	result.completed = false;
+	if (result.failure_message.empty())
+		result.failure_message = errorMessage;
 }
 
 std::future<ImportPipeline::Result> ImportPipeline::importStreaming(

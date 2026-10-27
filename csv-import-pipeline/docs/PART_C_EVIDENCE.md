@@ -107,3 +107,41 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 提交信息：`test: add large-file integrity assertions`。
 
 标签：`part-c-c1-integrity`。
+
+## C2：完整错误 sidecar 与有界内存样本
+
+### 设计与实现
+
+- `ImportPipeline::Config::error_log_path` 非空时启用 JSONL sidecar；现有 `error_limit` 继续控制 `Result.errors` 的内存样本数。未启用日志时，`error_limit=0` 仍保持“全部错误留在内存”的兼容语义。
+- `Result` 新增 `total_error_count`、`error_log_path`、`error_log_complete`、`completed`、`canceled` 和 `failure_message`，区分全量错误数、内存样本、日志完整性、正常取消与失败。
+- 每条 `RowError` 先由 `ErrorSink` 写入 sidecar，再按 `error_limit` 决定是否保留内存样本；写入失败立即终止，结果不会标记 completed。
+- `ErrorSink` 使用固定 64 KiB 输出缓冲，正常结束显式 flush/close 并检查状态；不逐条 flush、不建立异步无界队列。
+- JSONL 保存物理行号、错误码、可读原因、列索引/名称。`raw_line` 与 `raw_value` 使用大写十六进制编码，能无损保存非法 UTF-8/GBK 和控制字节；其他字符串只输出 ASCII 或 JSON `\u00XX` 转义。
+
+### 自动化测试
+
+- `Pipeline.CompleteErrorLogIgnoresMemorySampleLimit`：生成 10,000 条错误，内存只留 3 条，sidecar 仍有 10,000 条，并核对首/中/末记录。
+- `Pipeline.ErrorLogPreservesArbitraryRawBytes`：输入含 `0xFF`，日志以 `782CFF` 保存完整原始行且整条 JSONL 为 ASCII。
+- `Pipeline.ErrorLogOpenFailureIsReported`：把目录当日志文件，确定性触发打开失败；结果 completed=false、error_log_complete=false、处理行数为 0，并带失败原因。
+
+### 指定 1 GB 文件实测
+
+命令：
+
+```powershell
+build-review-baseline/Release/csvp_large_verify.exe `
+  data/sample_1gb.csv docs/evidence/part_c_c2_errors.jsonl
+python tools/verify_error_log.py docs/evidence/part_c_c2_errors.jsonl
+```
+
+结果：两个命令退出码均为 0。生产管道 imported=9,990,000、skipped=10,000、total_errors=10,000、内存样本=200、total_lines=10,000,000、error_log_complete=true，并输出 `LARGE_IMPORT_INTEGRITY_PASS`。sidecar 共 10,000 行、3,896,682 bytes，SHA-256 为 `C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C`；独立 JSON 解析逐条复核 mismatch=0，首/中/末分别对应 id 1000、5,000,000、10,000,000。
+
+该版本含日志的 pipeline 耗时 25,247.4 ms，吞吐 396,080.388 rows/s、39.762 MB/s，比 C0 不落盘基线慢 34.33%。这是完整错误持久化的初始成本，将在 C6 调优，但不会用丢错误换速度。
+
+Release/Debug 全量回归均为 64/64 通过；C2 三项定向测试 3/3 通过；MSVC C++ 编译警告 0；`error_sink.cpp` 与 `pipeline.cpp` 的 clang-tidy 均退出码 0、可见告警/错误 0。完整 sidecar 与摘要分别保存为 `docs/evidence/part_c_c2_errors.jsonl`、`docs/evidence/part_c_c2_error_log_summary.json`。
+
+### Git 证据
+
+提交信息：`feat: persist complete large-import error details`。
+
+标签：`part-c-c2-error-sidecar`。

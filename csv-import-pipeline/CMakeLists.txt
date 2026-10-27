@@ -12,6 +12,7 @@ option(BUILD_BENCH "Build benchmarks" ON)
 
 # -------------------- library --------------------
 set(CSVP_SOURCES
+    src/error_sink.cpp
     src/parser.cpp
     src/validator.cpp
     src/pipeline.cpp

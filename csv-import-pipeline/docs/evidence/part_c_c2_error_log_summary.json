@@ -1,0 +1,31 @@
+{
+  "path": "D:\\c++development\\week01\\csv-import-pipeline\\csv-import-pipeline\\docs\\evidence\\part_c_c2_errors.jsonl",
+  "size_bytes": 3896682,
+  "sha256": "C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C",
+  "record_count": 10000,
+  "memory_error_samples": 200,
+  "mismatch_count": 0,
+  "samples": [
+    {
+      "record": 1,
+      "physical_line": 1001,
+      "id": 1000
+    },
+    {
+      "record": 5000,
+      "physical_line": 5000001,
+      "id": 5000000
+    },
+    {
+      "record": 10000,
+      "physical_line": 10000001,
+      "id": 10000000
+    }
+  ],
+  "large_verify_exit_code": 0,
+  "pipeline_elapsed_milliseconds": 25247.4,
+  "processed_rows_per_second": 396080.388,
+  "input_mb_per_second": 39.762,
+  "error_log_complete": true,
+  "passed": true
+}

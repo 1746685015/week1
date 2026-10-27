@@ -106,6 +106,136 @@ TEST(Pipeline, ErrorLimit)
 	EXPECT_EQ(result.errors.size(), config.error_limit);
 }
 
+TEST(Pipeline, CompleteErrorLogIgnoresMemorySampleLimit)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path inputPath = std::filesystem::temp_directory_path()
+		/ ("csvp_error_log_input_" + std::to_string(uniqueValue) + ".csv");
+	const std::filesystem::path logPath = std::filesystem::temp_directory_path()
+		/ ("csvp_error_log_" + std::to_string(uniqueValue) + ".jsonl");
+	{
+		std::ofstream output(inputPath, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "id,age\n";
+		for (std::size_t id = 1U; id <= 10000U; ++id)
+			output << id << ",N/A\n";
+	}
+
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	config.error_limit = 3U;
+	config.error_log_path = logPath.string();
+	const std::vector<FieldRule> rules = {
+		{"id", FieldType::Int, true},
+		{"age", FieldType::Int, true},
+	};
+	ImportPipeline pipeline(config, rules);
+	const ImportPipeline::Result result = pipeline.importSync(inputPath.string().c_str());
+
+	EXPECT_TRUE(result.completed);
+	EXPECT_FALSE(result.canceled);
+	EXPECT_TRUE(result.error_log_complete);
+	EXPECT_TRUE(result.failure_message.empty());
+	EXPECT_EQ(result.error_log_path, logPath.string());
+	EXPECT_EQ(result.rows_imported, 0U);
+	EXPECT_EQ(result.rows_skipped, 10000U);
+	EXPECT_EQ(result.total_error_count, 10000U);
+	EXPECT_EQ(result.errors.size(), 3U);
+
+	std::ifstream logInput(logPath, std::ios::binary);
+	ASSERT_TRUE(logInput.is_open());
+	std::size_t logRecordCount = 0U;
+	std::string firstRecord;
+	std::string middleRecord;
+	std::string lastRecord;
+	std::string record;
+	while (std::getline(logInput, record))
+	{
+		++logRecordCount;
+		if (logRecordCount == 1U)
+			firstRecord = record;
+		else if (logRecordCount == 5000U)
+			middleRecord = record;
+		else if (logRecordCount == 10000U)
+			lastRecord = record;
+	}
+	EXPECT_EQ(logRecordCount, 10000U);
+	EXPECT_NE(firstRecord.find("\"line_number\":2"), std::string::npos);
+	EXPECT_NE(firstRecord.find("\"raw_line_hex\":\"312C4E2F41\""), std::string::npos);
+	EXPECT_NE(middleRecord.find("\"line_number\":5001"), std::string::npos);
+	EXPECT_NE(middleRecord.find("\"raw_line_hex\":\"353030302C4E2F41\""),
+		std::string::npos);
+	EXPECT_NE(lastRecord.find("\"line_number\":10001"), std::string::npos);
+	EXPECT_NE(lastRecord.find("\"raw_line_hex\":\"31303030302C4E2F41\""),
+		std::string::npos);
+	EXPECT_NE(lastRecord.find("\"code\":\"TypeConversionError\""), std::string::npos);
+
+	logInput.close();
+	std::filesystem::remove(inputPath);
+	std::filesystem::remove(logPath);
+}
+
+TEST(Pipeline, ErrorLogPreservesArbitraryRawBytes)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path inputPath = std::filesystem::temp_directory_path()
+		/ ("csvp_error_bytes_input_" + std::to_string(uniqueValue) + ".csv");
+	const std::filesystem::path logPath = std::filesystem::temp_directory_path()
+		/ ("csvp_error_bytes_" + std::to_string(uniqueValue) + ".jsonl");
+	{
+		std::ofstream output(inputPath, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "id,value\n";
+		const char rowBytes[] = {'x', ',', static_cast<char>(0xFF), '\n'};
+		output.write(rowBytes, static_cast<std::streamsize>(sizeof(rowBytes)));
+	}
+
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	config.error_limit = 1U;
+	config.error_log_path = logPath.string();
+	const std::vector<FieldRule> rules = {
+		{"id", FieldType::Int, true},
+		{"value", FieldType::String, true},
+	};
+	ImportPipeline pipeline(config, rules);
+	const ImportPipeline::Result result = pipeline.importSync(inputPath.string().c_str());
+
+	EXPECT_TRUE(result.completed);
+	EXPECT_TRUE(result.error_log_complete);
+	EXPECT_EQ(result.total_error_count, 1U);
+	std::ifstream logInput(logPath, std::ios::binary);
+	ASSERT_TRUE(logInput.is_open());
+	std::string record;
+	ASSERT_TRUE(static_cast<bool>(std::getline(logInput, record)));
+	EXPECT_NE(record.find("\"raw_line_hex\":\"782CFF\""), std::string::npos);
+	EXPECT_NE(record.find("\"code\":\"ParseError\""), std::string::npos);
+	for (const unsigned char character : record)
+		EXPECT_LE(character, 0x7FU);
+
+	logInput.close();
+	std::filesystem::remove(inputPath);
+	std::filesystem::remove(logPath);
+}
+
+TEST(Pipeline, ErrorLogOpenFailureIsReported)
+{
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	config.error_limit = 1U;
+	config.error_log_path = std::filesystem::temp_directory_path().string();
+	ImportPipeline pipeline(config, makeDefaultRules());
+	const ImportPipeline::Result result =
+		pipeline.importSync(dataPath("sample_utf8.csv").c_str());
+
+	EXPECT_FALSE(result.completed);
+	EXPECT_FALSE(result.error_log_complete);
+	EXPECT_EQ(result.rows_imported, 0U);
+	EXPECT_EQ(result.rows_skipped, 0U);
+	EXPECT_EQ(result.total_error_count, 0U);
+	EXPECT_NE(result.failure_message.find("Failed to open error log"), std::string::npos);
+}
+
 TEST(Pipeline, NoHeaderUsesRuleCount)
 {
 	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
