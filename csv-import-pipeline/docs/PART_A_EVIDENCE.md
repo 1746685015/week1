@@ -816,3 +816,31 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a26-size-constant-types`。
+
+## A-27：正则校验的相邻字符串参数容易传反
+
+### 复现与根因
+
+`clang-tidy` 的 `bugprone-easily-swappable-parameters` 指出，私有函数 `validateRegex()` 连续接收 `value` 与 `pattern` 两个 `const std::string &`。两者语义不同但类型完全相同，调用点即使顺序写反也能通过编译，并可能把字段值当正则表达式使用。
+
+### 修复
+
+- 用已有的 `const FieldRule &rule` 替代裸 `pattern` 参数，由函数内部读取 `rule.regex`。
+- `value` 和输出参数 `errorMessage` 之间现在由不同类型的 `FieldRule` 隔开，接口不再存在可互换的相邻字符串参数。
+- 函数仍按同一列、同一规则复用预编译正则，不改变缓存策略与校验结果。
+
+### 验证
+
+```powershell
+clang-tidy src/validator.cpp -checks="-*,bugprone-easily-swappable-parameters" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+cmake --build build-review-baseline --config Release --parallel
+cmake --build build-review-baseline --config Debug --parallel
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：专项 clang-tidy 显示告警 0、错误 0；Release/Debug 全量回归均为 47/47 通过、零失败。
+
+### Git 证据
+
+Git 标签：`part-a-a27-regex-parameter-safety`。

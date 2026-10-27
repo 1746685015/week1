@@ -126,7 +126,7 @@ CellError FieldValidator::validateField(std::size_t columnIndex, const std::stri
 		error.message = std::move(errorMessage);
 		return error;
 	}
-	if (!rule.regex.empty() && !validateRegex(columnIndex, rawValue, rule.regex, errorMessage))
+	if (!rule.regex.empty() && !validateRegex(columnIndex, rawValue, rule, errorMessage))
 	{
 		error.code = ErrorCode::RegexMismatch;
 		error.message = std::move(errorMessage);
@@ -226,8 +226,9 @@ bool FieldValidator::validateRange(const std::string &value, const FieldRule &ru
 }
 
 bool FieldValidator::validateRegex(std::size_t columnIndex, const std::string &value,
-	const std::string &pattern, std::string &errorMessage) const
+	const FieldRule &rule, std::string &errorMessage) const
 {
+	const std::string &pattern = rule.regex;
 	if (columnIndex < m_rules.size() && columnIndex < m_compiledRegex.size()
 		&& columnIndex < m_regexErrors.size()
 		&& m_rules[columnIndex].regex == pattern)

@@ -39,7 +39,7 @@ private:
 	bool validateRange(const std::string &value, const FieldRule &rule,
 		std::string &errorMessage) const;
 	bool validateRegex(std::size_t columnIndex, const std::string &value,
-		const std::string &pattern, std::string &errorMessage) const;
+		const FieldRule &rule, std::string &errorMessage) const;
 	void compileRegex(const FieldRule &rule);
 
 	std::vector<FieldRule> m_rules;
