@@ -30,8 +30,7 @@ if(MSVC)
         /W4             # warning level 4
     )
     if(ENABLE_ASAN)
-        target_compile_options(csvp PUBLIC /fsanitize=address)
-        target_link_options(csvp PUBLIC /fsanitize=address)
+        target_compile_options(csvp PRIVATE /fsanitize=address)
     endif()
 else()
     target_compile_options(csvp PUBLIC -Wall -Wextra -pedantic)
@@ -52,6 +51,14 @@ if(BUILD_TESTS)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     add_subdirectory(third_party/googletest)
 
+    if(MSVC AND ENABLE_ASAN)
+        foreach(GTEST_TARGET gtest gtest_main gmock gmock_main)
+            if(TARGET ${GTEST_TARGET})
+                target_compile_options(${GTEST_TARGET} PRIVATE /fsanitize=address)
+            endif()
+        endforeach()
+    endif()
+
     set(TEST_SOURCES
         tests/test_parser.cpp
         tests/test_validator.cpp
@@ -67,7 +74,6 @@ if(BUILD_TESTS)
         target_compile_options(csvp_tests PRIVATE /utf-8 /permissive- /EHsc /W4)
         if(ENABLE_ASAN)
             target_compile_options(csvp_tests PRIVATE /fsanitize=address)
-            target_link_options(csvp_tests PRIVATE /fsanitize=address)
         endif()
     endif()
 
