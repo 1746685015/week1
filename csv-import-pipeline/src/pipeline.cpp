@@ -50,7 +50,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 				throw std::runtime_error(message.str());
 
 			RowError rowError;
-			rowError.line_number = static_cast<size_t>(parser.lineNumber());
+			rowError.line_number = parser.lineNumber();
 			std::ostringstream rawLine;
 			for (size_t index = 0; index < row.size(); ++index)
 			{
@@ -91,7 +91,7 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 // validateAndCollect
 // ============================================================
 
-void ImportPipeline::validateAndCollect(Row& row, size_t line_number, Result& result) {
+void ImportPipeline::validateAndCollect(Row& row, std::uint64_t line_number, Result& result) {
     try {
         auto cell_errors = validator_.validate(row);
 

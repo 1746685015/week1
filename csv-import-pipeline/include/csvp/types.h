@@ -52,7 +52,7 @@ struct CellError {
 
 // ---------- per-row error ----------
 struct RowError {
-    size_t line_number = 0;
+    std::uint64_t line_number = 0;
     std::string raw_line;      // 原始行的完整拷贝
     std::vector<CellError> cell_errors;
 };

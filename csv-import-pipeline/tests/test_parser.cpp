@@ -1,12 +1,16 @@
 #include "csvp/parser.h"
 #include "csvp/row.h"
+#include "csvp/types.h"
 
 #include <gtest/gtest.h>
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <fstream>
 #include <chrono>
 #include <filesystem>
+#include <type_traits>
+#include <utility>
 
 namespace {
 
@@ -204,6 +208,17 @@ TEST(Parser, LineCrossesReadBufferBoundary)
 		EXPECT_EQ(row[1], "tail");
 	}
 	std::filesystem::remove(path);
+}
+
+TEST(Parser, LineNumberUsesFixedWidthType)
+{
+	static_assert(std::is_same_v<decltype(std::declval<const csvp::CsvParser &>().lineNumber()),
+		std::uint64_t>);
+	static_assert(std::is_same_v<decltype(csvp::RowError::line_number), std::uint64_t>);
+
+	csvp::RowError error;
+	error.line_number = static_cast<std::uint64_t>(UINT32_MAX) + 1U;
+	EXPECT_EQ(error.line_number, 4294967296ULL);
 }
 
 // ============================================================

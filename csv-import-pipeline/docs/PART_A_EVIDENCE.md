@@ -271,3 +271,32 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a6-buffered-io`。
+
+## A-7：行号类型可能在超大文件中溢出
+
+### 复现与根因
+
+解析器内部行号及 `lineNumber()` 返回值原为 32 位 `int`，而 `RowError::line_number` 和管道校验接口使用平台相关的 `size_t`。超过 `INT_MAX` 行的输入会使解析器计数溢出，并且接口之间的类型不一致会隐藏截断风险。
+
+### 修复
+
+- 将解析器行号成员和 `lineNumber()` 返回值统一为固定宽度的 `std::uint64_t`。
+- 将 `RowError::line_number` 与管道内部传递行号的参数同步改为 `std::uint64_t`。
+- 删除从解析器行号到 `size_t` 的多余强制转换。
+- 新增编译期类型断言，并在运行时验证能够保存 `UINT32_MAX + 1`（4,294,967,296）。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.LineNumberUsesFixedWidthType
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.LineNumberUsesFixedWidthType
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.LineNumberUsesFixedWidthType
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 1/1 通过，ASan 零报告；Release 与 Debug 全量回归均执行 26 项，26 项全部通过。仅 A-8、A-9 和 Part B 的关闭测试仍保持 disabled。
+
+### Git 证据
+
+Git 标签：`part-a-a7-wide-line-number`。

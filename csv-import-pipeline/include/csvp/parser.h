@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -37,7 +38,7 @@ public:
 		return m_header;
 	}
 
-	int lineNumber() const;
+	std::uint64_t lineNumber() const;
 	std::size_t bytesRead() const;
 
 	const std::string &lastError() const
@@ -65,7 +66,7 @@ private:
 	std::size_t m_readSize = 0;
 	std::string m_lineBuffer;
 	std::vector<std::string> m_header;
-	int m_lineNumber = 0;
+	std::uint64_t m_lineNumber = 0;
 	std::size_t m_bytesRead = 0;
 	bool m_headerParsed = false;
 };

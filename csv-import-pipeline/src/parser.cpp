@@ -313,7 +313,7 @@ std::size_t CsvParser::encodedCharacterLength(const char *line, std::size_t posi
 	return sequenceLength;
 }
 
-int CsvParser::lineNumber() const
+std::uint64_t CsvParser::lineNumber() const
 {
 	return m_lineNumber;
 }

@@ -67,7 +67,7 @@ public:
     Stats stats() const;
 
 private:
-    void validateAndCollect(Row& row, size_t line_number, Result& result);
+    void validateAndCollect(Row& row, std::uint64_t line_number, Result& result);
 
     Config cfg_;
     std::vector<FieldRule> rules_;
