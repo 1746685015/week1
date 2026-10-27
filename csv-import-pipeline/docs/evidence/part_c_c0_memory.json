@@ -1,0 +1,19 @@
+{
+  "measurement": "external 50 ms polling of System.Diagnostics.Process",
+  "git_sha": "e1b30220505632948496345f81a9a599f4fe5ded",
+  "configuration": "MSVC 2022 x64 Release",
+  "exit_code": 0,
+  "wall_clock_milliseconds": 19138.130,
+  "pipeline_elapsed_milliseconds": 18794.800,
+  "peak_working_set_bytes": 8818688,
+  "peak_working_set_mb": 8.819,
+  "peak_working_set_mib": 8.410,
+  "peak_private_bytes": 5066752,
+  "rows_imported": 9990000,
+  "rows_skipped": 10000,
+  "errors_in_memory": 10000,
+  "processed_rows_per_second": 532062.060,
+  "input_mb_per_second": 53.414,
+  "passed_50_mb_limit": true,
+  "note": "This C0 wrapper establishes a baseline. C3 adds in-process GetProcessMemoryInfo evidence."
+}

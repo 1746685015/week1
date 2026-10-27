@@ -1,0 +1,29 @@
+{
+  "path": "D:\\c++development\\week01\\csv-import-pipeline\\csv-import-pipeline\\data\\sample_1gb.csv",
+  "size_bytes": 1003898922,
+  "sha256": "89FA6C306B9730EA71A782DA699C64CEC1EFC6B4097852BB457BC30ABC9477D0",
+  "header": "id,name,age,score,active",
+  "data_rows": 10000000,
+  "invalid_rows": 10000,
+  "last_line_ended_with_newline": true,
+  "mismatch_count": 0,
+  "invalid_samples": [
+    {
+      "physical_line": 1001,
+      "id": 1000,
+      "raw_line": "1000,User00001000xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,N/A,50.0,true"
+    },
+    {
+      "physical_line": 5000001,
+      "id": 5000000,
+      "raw_line": "5000000,User05000000xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,N/A,50.0,true"
+    },
+    {
+      "physical_line": 10000001,
+      "id": 10000000,
+      "raw_line": "10000000,User10000000xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,N/A,50.0,true"
+    }
+  ],
+  "validation_elapsed_seconds": 51.092,
+  "passed": true
+}
