@@ -97,31 +97,31 @@ TEST(Parser, NoTrailingNewline)
 // Parser.ReentryState
 // 已知现象见 docs/KNOWN_ISSUES.md #2。修复后去掉前缀 DISABLED_ 以启用验证。
 // ============================================================
-TEST(Parser, DISABLED_ReentryState) {
-    csvp::CsvParser::Config cfg;
-    cfg.has_header = true;
+TEST(Parser, ReentryState)
+{
+	csvp::CsvParser::Config config;
+	config.has_header = true;
+	csvp::CsvParser parser(config);
 
-    csvp::CsvParser parser(cfg);
+	ASSERT_TRUE(parser.parse(dataPath("sample_utf8.csv").c_str()));
+	int firstRowCount = 0;
+	csvp::Row row;
+	while (parser.readRow(row))
+		++firstRowCount;
+	EXPECT_EQ(firstRowCount, 10);
+	EXPECT_EQ(parser.lineNumber(), 11);
+	EXPECT_EQ(parser.bytesRead(), 236U);
 
-    // First parse
-    ASSERT_TRUE(parser.parse(dataPath("sample_utf8.csv").c_str()));
-    int count1 = 0;
-    csvp::Row row;
-    while (parser.readRow(row)) ++count1;
-    EXPECT_EQ(count1, 10);
-    int lines1 = parser.lineNumber();
+	ASSERT_TRUE(parser.parse(dataPath("sample_noeol.csv").c_str()));
+	EXPECT_TRUE(parser.lastError().empty());
+	EXPECT_EQ(parser.lineNumber(), 1);
+	int secondRowCount = 0;
+	while (parser.readRow(row))
+		++secondRowCount;
 
-    // Second parse (different file)
-    ASSERT_TRUE(parser.parse(dataPath("sample_noeol.csv").c_str()));
-    int count2 = 0;
-    while (parser.readRow(row)) ++count2;
-    int lines2 = parser.lineNumber();
-
-    std::cout << "First parse: " << count1 << " rows, line=" << lines1 << std::endl;
-    std::cout << "Second parse: " << count2 << " rows, line=" << lines2 << std::endl;
-
-    // lineNumber() after re-parse should reflect only the second file.
-    EXPECT_LE(lines2, 10) << "lineNumber() should reflect the second file only, got " << lines2;
+	EXPECT_EQ(secondRowCount, 3);
+	EXPECT_EQ(parser.lineNumber(), 4);
+	EXPECT_EQ(parser.bytesRead(), 51U);
 }
 
 // ============================================================

@@ -48,53 +48,64 @@ CsvParser::~CsvParser() {
 }
 
 // ---------- parse ----------
-bool CsvParser::parse(const char* filepath) {
-    // 关闭之前打开的文件
-    if (file_) {
-        fclose(file_);
-        file_ = nullptr;
-    }
+bool CsvParser::parse(const char *filepath)
+{
+	if (file_)
+	{
+		fclose(file_);
+		file_ = nullptr;
+	}
+	free(line_buffer_);
+	line_buffer_ = nullptr;
 
-    // 打开文件
+	last_error_.clear();
+	file_size_ = 0;
+	buffer_capacity_ = 0;
+	buffer_offset_ = 0;
+	header_.clear();
+	line_number_ = 0;
+	bytes_read_ = 0;
+	header_parsed_ = false;
+
 #ifdef _WIN32
-    fopen_s(&file_, filepath, "rb");
+	fopen_s(&file_, filepath, "rb");
 #else
-    file_ = fopen(filepath, "rb");
+	file_ = fopen(filepath, "rb");
 #endif
-    if (!file_) {
-        last_error_ = std::string("Failed to open file: ") + filepath;
-        return false;
-    }
+	if (!file_)
+	{
+		last_error_ = std::string("Failed to open file: ") + filepath;
+		return false;
+	}
 
-    file_size_ = getFileSize(file_);
+	file_size_ = getFileSize(file_);
 
-    // 分配行缓冲区（最大 16 MB）
-    buffer_capacity_ = (1 << 24);  // 16 MB
-    line_buffer_ = static_cast<char*>(malloc(buffer_capacity_));
-    if (!line_buffer_) {
-        last_error_ = "Failed to allocate line buffer";
-        return false;
-    }
+	buffer_capacity_ = (1 << 24);
+	line_buffer_ = static_cast<char *>(malloc(buffer_capacity_));
+	if (!line_buffer_)
+	{
+		last_error_ = "Failed to allocate line buffer";
+		fclose(file_);
+		file_ = nullptr;
+		return false;
+	}
 
-    // ---- 状态重置 ----
-    header_.clear();
-    header_parsed_ = false;
-    buffer_offset_ = 0;
+	if (cfg_.has_header)
+	{
+		Row headerRow;
+		if (!readRow(headerRow))
+		{
+			last_error_ = "Failed to read header row";
+			fclose(file_);
+			file_ = nullptr;
+			return false;
+		}
+		for (size_t index = 0; index < headerRow.size(); ++index)
+			header_.push_back(headerRow[index]);
+		header_parsed_ = true;
+	}
 
-    // 解析表头
-    if (cfg_.has_header) {
-        Row header_row;
-        if (!readRow(header_row)) {
-            last_error_ = "Failed to read header row";
-            return false;
-        }
-        for (size_t i = 0; i < header_row.size(); ++i) {
-            header_.push_back(header_row[i]);
-        }
-        header_parsed_ = true;
-    }
-
-    return true;
+	return true;
 }
 
 // ---------- readRow ----------

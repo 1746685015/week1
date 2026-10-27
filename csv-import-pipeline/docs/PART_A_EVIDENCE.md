@@ -95,3 +95,36 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a1-no-trailing-newline`。
+
+## A-2：解析器重复使用时状态残留和缓冲区泄漏
+
+### 复现
+
+修复前强制运行 `Parser.DISABLED_ReentryState`：第一次解析结束时行号为 11，第二次解析另一个文件后行号累计到 14；每次 `parse()` 又分配新的 16 MB 缓冲区，却没有先释放旧缓冲区。
+
+### 根因
+
+`parse()` 只关闭旧文件并清空表头/偏移，没有重置 `line_number_`、`bytes_read_`、`last_error_`，也没有释放已有的 `line_buffer_`。缓冲区分配失败或表头读取失败时，已打开文件也未立即关闭。
+
+### 修复
+
+- 每次解析前关闭旧文件并释放旧缓冲区。
+- 在打开新文件前统一清空文件大小、偏移、表头、行号、字节数和错误状态。
+- 缓冲区分配失败或表头读取失败时立即关闭文件。
+- 启用 `Parser.ReentryState`，精确检查两个文件各自的行数、行号和读取字节数。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.ReentryState
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.ReentryState
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.ReentryState
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 1/1 通过，ASan 零报告。两种普通配置的全量回归均执行 21 项：20 项通过，仅后续 A-3 的 `Pipeline.SkipBadRows` 失败；`Pipeline.ErrorLimit` 因同一缺陷跳过。
+
+### Git 证据
+
+Git 标签：`part-a-a2-reentry-state`。
