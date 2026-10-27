@@ -51,7 +51,10 @@ public:
 	Stats stats() const;
 
 private:
-	Result runImport(const char *filepath);
+	static constexpr std::size_t PROGRESS_INTERVAL = 1000U;
+
+	Result runImport(const char *filepath,
+		const std::function<bool(std::size_t)> *progress);
 	void validateAndCollect(Row &row, std::uint64_t lineNumber, const CsvParser &parser,
 		Result &result);
 	void completeStreamingTask();

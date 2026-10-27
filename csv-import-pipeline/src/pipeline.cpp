@@ -26,10 +26,11 @@ ImportPipeline::~ImportPipeline()
 
 ImportPipeline::Result ImportPipeline::importSync(const char *filepath)
 {
-	return runImport(filepath);
+	return runImport(filepath, nullptr);
 }
 
-ImportPipeline::Result ImportPipeline::runImport(const char *filepath)
+ImportPipeline::Result ImportPipeline::runImport(const char *filepath,
+	const std::function<bool(std::size_t)> *progress)
 {
     Result result;
     auto t0 = std::chrono::steady_clock::now();
@@ -118,11 +119,8 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath)
 			if (m_config.error_limit == 0 || result.errors.size() < m_config.error_limit)
 				result.errors.push_back(std::move(rowError));
 			++result.rows_skipped;
-			m_rowsSkipped.store(result.rows_skipped, std::memory_order_relaxed);
-			continue;
 		}
-
-		if (row.size() != expectedColumnCount)
+		else if (row.size() != expectedColumnCount)
 		{
 			std::ostringstream message;
 			message << "Column count mismatch at line " << parser.lineNumber()
@@ -143,14 +141,20 @@ ImportPipeline::Result ImportPipeline::runImport(const char *filepath)
 			if (m_config.error_limit == 0 || result.errors.size() < m_config.error_limit)
 				result.errors.push_back(std::move(rowError));
 			++result.rows_skipped;
-			m_rowsSkipped.store(result.rows_skipped, std::memory_order_relaxed);
-			continue;
+		}
+		else
+		{
+			validateAndCollect(row, parser.lineNumber(), parser, result);
 		}
 
-        // ---- 校验与收集 ----
-        validateAndCollect(row, parser.lineNumber(), parser, result);
 		m_rowsImported.store(result.rows_imported, std::memory_order_relaxed);
 		m_rowsSkipped.store(result.rows_skipped, std::memory_order_relaxed);
+		const std::size_t processed = result.rows_imported + result.rows_skipped;
+		if (progress != nullptr && static_cast<bool>(*progress)
+			&& processed % PROGRESS_INTERVAL == 0)
+		{
+			(void)(*progress)(processed);
+		}
     }
 
     // 后处理
@@ -197,7 +201,6 @@ std::future<ImportPipeline::Result> ImportPipeline::importStreaming(
 	const char *filepath, std::function<bool(std::size_t)> progress)
 {
 	const std::string ownedFilepath = filepath == nullptr ? std::string() : filepath;
-	(void)progress;
 
 	std::unique_lock<std::mutex> lifecycleLock(m_lifecycleMutex);
 	{
@@ -216,11 +219,13 @@ std::future<ImportPipeline::Result> ImportPipeline::importStreaming(
 	}
 
 	// packaged_task stores task exceptions in the associated future.
-	std::packaged_task<Result()> task([this, ownedFilepath]() // NOLINT(bugprone-exception-escape)
+	std::packaged_task<Result()> task(
+		[this, ownedFilepath, progress = std::move(progress)]() // NOLINT(bugprone-exception-escape)
+		mutable
 	{
 		try
 		{
-			Result result = runImport(ownedFilepath.c_str());
+			Result result = runImport(ownedFilepath.c_str(), &progress);
 			completeStreamingTask();
 			return result;
 		}

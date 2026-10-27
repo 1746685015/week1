@@ -7,6 +7,7 @@
 #include <atomic>
 #include <chrono>
 #include <iostream>
+#include <vector>
 
 namespace {
 
@@ -120,6 +121,35 @@ TEST(Concurrent, ShutdownWhenIdle)
 
 	EXPECT_EQ(pipeline.pendingCount(), 0U);
 	EXPECT_LT(elapsed, std::chrono::milliseconds(200));
+}
+
+TEST(Concurrent, StreamingProgressEveryThousand)
+{
+	ImportPipeline::Config config;
+	config.skip_bad_rows = true;
+	ImportPipeline pipeline(config, makeDefaultRules());
+	std::vector<std::size_t> progressValues;
+	std::thread::id callbackThreadId;
+	const std::thread::id callerThreadId = std::this_thread::get_id();
+
+	std::future<ImportPipeline::Result> future = pipeline.importStreaming(
+		dataPath("sample_100k.csv").c_str(),
+		[&progressValues, &callbackThreadId](std::size_t processed)
+		{
+			callbackThreadId = std::this_thread::get_id();
+			progressValues.push_back(processed);
+			return true;
+		});
+	const ImportPipeline::Result result = future.get();
+
+	EXPECT_EQ(result.rows_imported, 98000U);
+	EXPECT_EQ(result.rows_skipped, 2000U);
+	ASSERT_EQ(progressValues.size(), 100U);
+	for (std::size_t index = 0; index < progressValues.size(); ++index)
+		EXPECT_EQ(progressValues[index], (index + 1U) * 1000U);
+	EXPECT_EQ(progressValues.back(), 100000U);
+	EXPECT_NE(callbackThreadId, callerThreadId);
+	EXPECT_EQ(pipeline.pendingCount(), 0U);
 }
 
 TEST(Concurrent, SyncImportStatsMatchResult)

@@ -107,7 +107,7 @@ clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++
 
 - 将同步路径的完整导入流程抽为私有 `runImport()`，同步与后台线程复用同一解析、列数检查、校验、错误收集和统计语义。
 - `importStreaming()` 在调用线程只复制文件路径、预约任务状态并创建 worker；解析器和全部导入工作在 worker 内执行。
-- 使用 `std::promise<Result>`/`std::future<Result>` 交付正常结果；异常通过 future 传播，不从线程入口逃逸。
+- 使用 `std::packaged_task<Result()>`/`std::future<Result>` 交付正常结果；异常通过 future 传播，不从线程入口逃逸。
 - 文件路径在启动线程前复制为拥有所有权的 `std::string`，不捕获调用者可能失效的 `const char *`。
 - 启动时 pending 为 1；正常、文件失败、异常和线程创建失败路径都调用统一清理，使 pending 最终归零并通知等待者。
 - 启动新任务前 join 已完成的旧 worker；活动任务重复启动会被明确拒绝，不覆盖 joinable thread。
@@ -129,3 +129,31 @@ clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++
 提交信息：`feat: implement asynchronous CSV import`。
 
 标签：`part-b-b2-async-import`。
+
+## B3：每 1000 行报告进度
+
+### 语义与实现
+
+- `processed` 定义为已经完成分类的数据记录数，即 `rows_imported + rows_skipped`；不包含表头。
+- 解析错误、列数错误和字段校验错误在按配置归入 skipped 后才计数，合法行在归入 imported 后计数。
+- 仅当 `processed` 是 1000 的整数倍时调用 callback；不足 1000 的末尾批次不额外回调。
+- 空 callback 被安全忽略；callback 在 worker 线程、所有内部锁之外执行。
+- B3 只报告进度，返回值取消语义在 B4 单独实现和提交。
+
+### 验证命令
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Concurrent.StreamingProgressEveryThousand
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Concurrent.StreamingProgressEveryThousand
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++17 -Iinclude -DWIN32 -D_WINDOWS
+```
+
+结果：Release/Debug 定向测试均为 1/1 通过；两种配置全量回归均为 50/50 通过、零失败；clang-tidy 退出码 0，显示告警 0、错误 0。`sample_100k.csv` 的回调值严格为 1000、2000……100000，共 100 次；结果为 imported=98000、skipped=2000，回调线程与调用线程不同，结束后 pending=0。
+
+### Git 证据
+
+提交信息：`feat: report streaming progress every 1000 rows`。
+
+标签：`part-b-b3-progress`。
