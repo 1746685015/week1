@@ -243,3 +243,32 @@ clang-tidy src/pipeline.cpp -checks="-*,clang-analyzer-*,bugprone-*" -- -std=c++
 提交信息：`fix: make streaming cleanup exception-safe`。
 
 标签：`part-b-b6-exception-safety`。
+
+## B7：worker 生命周期与重复调用
+
+### 覆盖范围
+
+- 正常完成后再次启动：旧的 joinable worker 先被 join，再创建新 worker。
+- 活动任务期间第二次流式启动被拒绝；活动流式任务期间同步启动在 B6 已覆盖。
+- callback 可读取 pending 并调用 shutdown，证明 callback 不在内部锁内执行；worker 自调用 shutdown 不发生 self-join。
+- callback 异常完成清理后，同一实例可再次成功启动。
+- 析构活动对象时发布停止信号并等待 worker；受控 callback 门闩证明析构不会让线程悬空访问对象。
+- B5 超时后再次 shutdown 仍按时返回，门闩释放后任务正常清理。
+- 线程创建失败路径无法在不增加生产代码故障注入接口的情况下稳定触发；代码审查确认赋值 `std::thread` 抛出时调用统一清理，future/pending 不悬挂。
+
+### 验证命令
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Concurrent.CompletedWorkerCanRestart:Concurrent.RejectsSecondStreamingImport:Concurrent.CallbackCanRequestShutdown:Concurrent.DestructorJoinsActiveWorker:Concurrent.RestartsAfterCallbackFailure:Concurrent.ShutdownNoDeadlock
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Concurrent.CompletedWorkerCanRestart:Concurrent.RejectsSecondStreamingImport:Concurrent.CallbackCanRequestShutdown:Concurrent.DestructorJoinsActiveWorker:Concurrent.RestartsAfterCallbackFailure:Concurrent.ShutdownNoDeadlock
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release/Debug 生命周期定向测试均为 6/6 通过；两种配置全量回归均为 61/61 通过、零失败，MSVC 构建无新增警告。已验证正常重启、异常后重启、活动任务重复启动拒绝、callback 内 pending/shutdown 无死锁、超时后再次 shutdown、活动对象析构等待并安全 join。
+
+### Git 证据
+
+提交信息：`test: cover streaming worker lifecycle`。
+
+标签：`part-b-b7-worker-lifecycle`。
