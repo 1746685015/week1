@@ -130,6 +130,44 @@ TEST(Parser, ReentryState)
 	EXPECT_EQ(parser.bytesRead(), 51U);
 }
 
+TEST(Parser, ReentryAfterOpenFailure)
+{
+	csvp::CsvParser parser;
+	csvp::Row row;
+	ASSERT_TRUE(parser.parse(dataPath("sample_utf8.csv").c_str()));
+	ASSERT_TRUE(parser.readRow(row));
+	EXPECT_GT(parser.lineNumber(), 0U);
+
+	EXPECT_FALSE(parser.parse("nonexistent_reentry_file_12345.csv"));
+	EXPECT_TRUE(parser.header().empty());
+	EXPECT_EQ(parser.lineNumber(), 0U);
+	EXPECT_EQ(parser.bytesRead(), 0U);
+	EXPECT_FALSE(parser.lastError().empty());
+
+	ASSERT_TRUE(parser.parse(dataPath("sample_noeol.csv").c_str()));
+	EXPECT_EQ(parser.header().size(), 3U);
+	EXPECT_TRUE(parser.lastError().empty());
+	int rowCount = 0;
+	while (parser.readRow(row))
+		++rowCount;
+	EXPECT_EQ(rowCount, 3);
+}
+
+TEST(Parser, RejectsNullAndEmptyPaths)
+{
+	csvp::CsvParser parser;
+	EXPECT_FALSE(parser.parse(nullptr));
+	EXPECT_NE(parser.lastError().find("null or empty"), std::string::npos);
+	EXPECT_TRUE(parser.header().empty());
+	EXPECT_EQ(parser.lineNumber(), 0U);
+	EXPECT_EQ(parser.bytesRead(), 0U);
+
+	EXPECT_FALSE(parser.parse(""));
+	EXPECT_NE(parser.lastError().find("null or empty"), std::string::npos);
+	ASSERT_TRUE(parser.parse(dataPath("sample_noeol.csv").c_str()));
+	EXPECT_EQ(parser.header().size(), 3U);
+}
+
 // ============================================================
 // Parser.ChineseGBKEncoding
 // 已知现象见 docs/KNOWN_ISSUES.md #3。修复后去掉前缀 DISABLED_ 以启用验证。

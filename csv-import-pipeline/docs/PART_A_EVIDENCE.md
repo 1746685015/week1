@@ -573,3 +573,32 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a16-atomic-stats`。
+
+## A-17：失败重入和非法路径状态不完整
+
+### 复现与根因
+
+A-2 已修复成功文件之间的重入状态，但尚未覆盖“成功 → 打开失败 → 再成功”。此外 `parse(nullptr)` 会把空指针直接传给 C 文件 API，Windows 安全运行库可能触发无效参数处理，而不是返回可控错误。
+
+### 修复
+
+- 每次 `parse()` 仍先关闭旧文件并重置表头、缓冲位置、行号、字节数和错误状态。
+- 在调用 `fopen_s/fopen` 前显式拒绝 null 与空字符串路径，返回 `CSV file path is null or empty`。
+- 删除未被任何逻辑读取的 `m_headerParsed` 状态，避免伪状态与真实资源状态分离。
+- 新增成功文件 → 不存在文件 → 再次成功文件的复用测试，以及 null/空路径测试。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.ReentryAfterOpenFailure:Parser.RejectsNullAndEmptyPaths
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.ReentryAfterOpenFailure:Parser.RejectsNullAndEmptyPaths
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.ReentryAfterOpenFailure:Parser.RejectsNullAndEmptyPaths
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 2/2 通过，ASan 零报告；Release 与 Debug 全量回归均为 42/42。
+
+### Git 证据
+
+Git 标签：`part-a-a17-safe-reentry`。

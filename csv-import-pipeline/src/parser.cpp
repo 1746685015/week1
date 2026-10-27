@@ -57,7 +57,12 @@ bool CsvParser::parse(const char *filepath)
 	m_lineNumber = 0;
 	m_bytesRead = 0;
 	m_lineEndedWithNewline = false;
-	m_headerParsed = false;
+	if (!filepath || filepath[0] == '\0')
+	{
+		m_lastError = "CSV file path is null or empty";
+		return false;
+	}
+
 	if (!EqualsIgnoringCase(m_config.encoding, "UTF-8")
 		&& !EqualsIgnoringCase(m_config.encoding, "UTF8")
 		&& !EqualsIgnoringCase(m_config.encoding, "GBK"))
@@ -92,7 +97,6 @@ bool CsvParser::parse(const char *filepath)
 		}
 		for (std::size_t index = 0; index < headerRow.size(); ++index)
 			m_header.push_back(headerRow[index]);
-		m_headerParsed = true;
 	}
 
 	return true;
