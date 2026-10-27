@@ -450,3 +450,32 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a12-raw-line`。
+
+## A-13：校验器静默忽略 schema 与数据列数差异
+
+### 复现与根因
+
+`FieldValidator::validate()` 原来只遍历 `min(row.size(), rules.size())`。数据列多于规则时，多余字段完全不校验；规则多于数据列时，缺失字段也不产生错误。管道有表头时只检查数据行与表头列数，未验证表头与规则数量是否一致。
+
+### 修复
+
+- 管道读取表头后立即检查表头列数与规则数；不一致时不读取数据行，返回包含两侧数量的 schema 错误。
+- 校验器对多余数据列产生 `ColumnCountMismatch`，记录列索引和原始值。
+- 校验器对缺失规则列产生 `ColumnCountMismatch`，记录列索引和规则名称。
+- 新增规则少于表头、规则多于表头，以及独立 Row 多列/少列测试。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Validator.ReportsSchemaColumnMismatch:Pipeline.RejectsHeaderRuleCountMismatch
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Validator.ReportsSchemaColumnMismatch:Pipeline.RejectsHeaderRuleCountMismatch
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Validator.ReportsSchemaColumnMismatch:Pipeline.RejectsHeaderRuleCountMismatch
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 2/2 通过，ASan 零报告；Release 与 Debug 全量回归均为 35/35。
+
+### Git 证据
+
+Git 标签：`part-a-a13-schema-contract`。

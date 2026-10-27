@@ -208,6 +208,35 @@ TEST(Pipeline, ErrorPreservesRawCsvLine)
 	std::filesystem::remove(path);
 }
 
+TEST(Pipeline, RejectsHeaderRuleCountMismatch)
+{
+	ImportPipeline::Config config;
+	std::vector<FieldRule> tooFewRules = makeDefaultRules();
+	tooFewRules.pop_back();
+	ImportPipeline tooFewPipeline(config, tooFewRules);
+	const ImportPipeline::Result tooFewResult =
+		tooFewPipeline.importSync(dataPath("sample_utf8.csv").c_str());
+	EXPECT_EQ(tooFewResult.rows_imported, 0U);
+	ASSERT_EQ(tooFewResult.errors.size(), 1U);
+	ASSERT_EQ(tooFewResult.errors[0].cell_errors.size(), 1U);
+	EXPECT_EQ(tooFewResult.errors[0].cell_errors[0].code, ErrorCode::ColumnCountMismatch);
+	EXPECT_NE(tooFewResult.errors[0].cell_errors[0].message.find("5 columns"), std::string::npos);
+	EXPECT_NE(tooFewResult.errors[0].cell_errors[0].message.find("4 validation rules"),
+		std::string::npos);
+
+	std::vector<FieldRule> tooManyRules = makeDefaultRules();
+	tooManyRules.push_back({"extra", FieldType::String, false});
+	ImportPipeline tooManyPipeline(config, tooManyRules);
+	const ImportPipeline::Result tooManyResult =
+		tooManyPipeline.importSync(dataPath("sample_utf8.csv").c_str());
+	EXPECT_EQ(tooManyResult.rows_imported, 0U);
+	ASSERT_EQ(tooManyResult.errors.size(), 1U);
+	ASSERT_EQ(tooManyResult.errors[0].cell_errors.size(), 1U);
+	EXPECT_EQ(tooManyResult.errors[0].cell_errors[0].code, ErrorCode::ColumnCountMismatch);
+	EXPECT_NE(tooManyResult.errors[0].cell_errors[0].message.find("6 validation rules"),
+		std::string::npos);
+}
+
 // ============================================================
 // Pipeline.StreamingImportNotImplemented (PASS - skeleton check)
 // ============================================================

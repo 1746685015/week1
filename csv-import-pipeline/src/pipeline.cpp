@@ -38,6 +38,26 @@ ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
 	const std::size_t expectedColumnCount = cfg_.parser.has_header
 		? parser.header().size()
 		: rules_.size();
+	if (cfg_.parser.has_header && expectedColumnCount != rules_.size())
+	{
+		std::ostringstream message;
+		message << "Schema mismatch: CSV header has " << expectedColumnCount
+			<< " columns, but " << rules_.size() << " validation rules were configured";
+		RowError schemaError;
+		schemaError.line_number = parser.lineNumber();
+		parser.getRawLine(schemaError.raw_line);
+		CellError cellError;
+		cellError.code = ErrorCode::ColumnCountMismatch;
+		cellError.message = message.str();
+		schemaError.cell_errors.push_back(std::move(cellError));
+		result.errors.push_back(std::move(schemaError));
+		stats_.bytes_read = parser.bytesRead();
+		const auto finishTime = std::chrono::steady_clock::now();
+		result.elapsed_ms = std::chrono::duration<double, std::milli>(finishTime - t0).count();
+		stats_.elapsed_ms = result.elapsed_ms;
+		return result;
+	}
+
     Row row;
 	while (true)
 	{

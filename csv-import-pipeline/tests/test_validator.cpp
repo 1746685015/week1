@@ -166,4 +166,25 @@ TEST(Validator, MultipleRules) {
     EXPECT_EQ(errors2.size(), 2u);
 }
 
+TEST(Validator, ReportsSchemaColumnMismatch)
+{
+	csvp::FieldValidator validator;
+	validator.addRule({"id", csvp::FieldType::Int, true});
+	validator.addRule({"name", csvp::FieldType::String, true});
+
+	const csvp::Row extraColumnRow({"1", "Alice", "unexpected"});
+	const std::vector<csvp::CellError> extraColumnErrors = validator.validate(extraColumnRow);
+	ASSERT_EQ(extraColumnErrors.size(), 1U);
+	EXPECT_EQ(extraColumnErrors[0].column_index, 2U);
+	EXPECT_EQ(extraColumnErrors[0].raw_value, "unexpected");
+	EXPECT_EQ(extraColumnErrors[0].code, csvp::ErrorCode::ColumnCountMismatch);
+
+	const csvp::Row missingColumnRow({"1"});
+	const std::vector<csvp::CellError> missingColumnErrors = validator.validate(missingColumnRow);
+	ASSERT_EQ(missingColumnErrors.size(), 1U);
+	EXPECT_EQ(missingColumnErrors[0].column_index, 1U);
+	EXPECT_EQ(missingColumnErrors[0].column_name, "name");
+	EXPECT_EQ(missingColumnErrors[0].code, csvp::ErrorCode::ColumnCountMismatch);
+}
+
 } // anonymous namespace

@@ -1,5 +1,6 @@
 #include "csvp/validator.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <sstream>
 
@@ -13,23 +14,37 @@ void FieldValidator::addRules(const std::vector<FieldRule>& rules) {
     rules_ = rules;
 }
 
-std::vector<CellError> FieldValidator::validate(const Row& row) const {
-    std::vector<CellError> errors;
+std::vector<CellError> FieldValidator::validate(const Row &row) const
+{
+	std::vector<CellError> errors;
+	const std::size_t sharedColumnCount = std::min(row.size(), rules_.size());
+	for (std::size_t columnIndex = 0; columnIndex < sharedColumnCount; ++columnIndex)
+	{
+		CellError error = validateField(columnIndex, row[columnIndex], rules_[columnIndex]);
+		if (error.code != ErrorCode::Ok)
+			errors.push_back(std::move(error));
+	}
 
-    size_t col_count = row.size();
-    if (col_count > rules_.size()) {
-        col_count = rules_.size();
-    }
+	for (std::size_t columnIndex = sharedColumnCount; columnIndex < row.size(); ++columnIndex)
+	{
+		CellError error;
+		error.column_index = columnIndex;
+		error.raw_value = row[columnIndex];
+		error.code = ErrorCode::ColumnCountMismatch;
+		error.message = "No validation rule for CSV column";
+		errors.push_back(std::move(error));
+	}
 
-    for (size_t i = 0; i < col_count; ++i) {
-        const auto& raw = row[i];
-        auto err = validateField(i, raw, rules_[i]);
-        if (err.code != ErrorCode::Ok) {
-            errors.push_back(std::move(err));
-        }
-    }
-
-    return errors;
+	for (std::size_t columnIndex = sharedColumnCount; columnIndex < rules_.size(); ++columnIndex)
+	{
+		CellError error;
+		error.column_index = columnIndex;
+		error.column_name = rules_[columnIndex].name;
+		error.code = ErrorCode::ColumnCountMismatch;
+		error.message = "CSV row is missing a schema column";
+		errors.push_back(std::move(error));
+	}
+	return errors;
 }
 
 CellError FieldValidator::validateField(size_t column_index,
