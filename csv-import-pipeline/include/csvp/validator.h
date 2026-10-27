@@ -1,40 +1,46 @@
-#pragma once
+#ifndef CSVP_VALIDATOR_H_
+#define CSVP_VALIDATOR_H_
 
-#include "types.h"
-#include "row.h"
-
+#include <cstddef>
 #include <string>
 #include <vector>
-#include <regex>
+
+#include "csvp/row.h"
+#include "csvp/types.h"
 
 namespace csvp {
 
-// FieldValidator: 对一行 CSV 数据的每个字段按规则校验。
-// 校验规则由外部通过 addRule() 或构造函数传入。
-class FieldValidator {
+class FieldValidator
+{
 public:
-    FieldValidator() = default;
+	FieldValidator() = default;
 
-    // 添加一条校验规则（按列索引顺序）
-    void addRule(const FieldRule& rule);
-    void addRules(const std::vector<FieldRule>& rules);
+	void addRule(const FieldRule &rule);
+	void addRules(const std::vector<FieldRule> &rules);
+	std::vector<CellError> validate(const Row &row) const;
+	CellError validateField(std::size_t columnIndex, const std::string &rawValue,
+		const FieldRule &rule) const;
 
-    // 校验一整行。返回错误列表（空 = 全部通过）。
-    std::vector<CellError> validate(const Row& row) const;
+	const std::vector<FieldRule> &rules() const
+	{
+		return m_rules;
+	}
 
-    // 校验单个字段
-    CellError validateField(size_t column_index, const std::string& raw_value,
-                            const FieldRule& rule) const;
-
-    const std::vector<FieldRule>& rules() const { return rules_; }
-    size_t columnCount() const { return rules_.size(); }
+	std::size_t columnCount() const
+	{
+		return m_rules.size();
+	}
 
 private:
-    bool validateType(const std::string& value, FieldType type, std::string& err_msg) const;
-    bool validateRange(const std::string& value, const FieldRule& rule, std::string& err_msg) const;
-    bool validateRegex(const std::string& value, const std::string& pattern, std::string& err_msg) const;
+	bool validateType(const std::string &value, FieldType type, std::string &errorMessage) const;
+	bool validateRange(const std::string &value, const FieldRule &rule,
+		std::string &errorMessage) const;
+	bool validateRegex(const std::string &value, const std::string &pattern,
+		std::string &errorMessage) const;
 
-    std::vector<FieldRule> rules_;
+	std::vector<FieldRule> m_rules;
 };
 
 } // namespace csvp
+
+#endif // CSVP_VALIDATOR_H_

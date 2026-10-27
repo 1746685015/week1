@@ -187,4 +187,62 @@ TEST(Validator, ReportsSchemaColumnMismatch)
 	EXPECT_EQ(missingColumnErrors[0].code, csvp::ErrorCode::ColumnCountMismatch);
 }
 
+TEST(Validator, RejectsNumericOverflowAndNonFiniteValues)
+{
+	const csvp::FieldRule integerRule = {"value", csvp::FieldType::Int, true};
+	csvp::FieldValidator integerValidator;
+	integerValidator.addRule(integerRule);
+	EXPECT_EQ(integerValidator.validateField(0U, "9223372036854775807", integerRule).code,
+		csvp::ErrorCode::Ok);
+	EXPECT_EQ(integerValidator.validateField(0U, "-9223372036854775808", integerRule).code,
+		csvp::ErrorCode::Ok);
+	EXPECT_EQ(integerValidator.validateField(0U, "9223372036854775808", integerRule).code,
+		csvp::ErrorCode::TypeConversionError);
+	EXPECT_EQ(integerValidator.validateField(0U, "-9223372036854775809", integerRule).code,
+		csvp::ErrorCode::TypeConversionError);
+	EXPECT_EQ(integerValidator.validateField(0U, " 1", integerRule).code,
+		csvp::ErrorCode::TypeConversionError);
+
+	const csvp::FieldRule doubleRule = {"value", csvp::FieldType::Double, true};
+	csvp::FieldValidator doubleValidator;
+	doubleValidator.addRule(doubleRule);
+	EXPECT_EQ(doubleValidator.validateField(0U, "-0", doubleRule).code, csvp::ErrorCode::Ok);
+	for (const char *invalidValue : {"1e9999", "nan", "inf", "-inf", " 1.0"})
+	{
+		EXPECT_EQ(doubleValidator.validateField(0U, invalidValue, doubleRule).code,
+			csvp::ErrorCode::TypeConversionError);
+	}
+}
+
+TEST(Validator, NumericRangeIncludesExactBoundaries)
+{
+	csvp::FieldRule integerRule;
+	integerRule.name = "integer";
+	integerRule.type = csvp::FieldType::Int;
+	integerRule.has_range = true;
+	integerRule.min_val = -10.0;
+	integerRule.max_val = 10.0;
+	csvp::FieldValidator integerValidator;
+	integerValidator.addRule(integerRule);
+	EXPECT_EQ(integerValidator.validateField(0U, "-10", integerRule).code, csvp::ErrorCode::Ok);
+	EXPECT_EQ(integerValidator.validateField(0U, "10", integerRule).code, csvp::ErrorCode::Ok);
+	EXPECT_EQ(integerValidator.validateField(0U, "-11", integerRule).code,
+		csvp::ErrorCode::RangeError);
+	EXPECT_EQ(integerValidator.validateField(0U, "11", integerRule).code,
+		csvp::ErrorCode::RangeError);
+
+	csvp::FieldRule doubleRule;
+	doubleRule.name = "double";
+	doubleRule.type = csvp::FieldType::Double;
+	doubleRule.has_range = true;
+	doubleRule.min_val = -1.0;
+	doubleRule.max_val = 1.0;
+	csvp::FieldValidator doubleValidator;
+	doubleValidator.addRule(doubleRule);
+	EXPECT_EQ(doubleValidator.validateField(0U, "-1.0", doubleRule).code, csvp::ErrorCode::Ok);
+	EXPECT_EQ(doubleValidator.validateField(0U, "1.0", doubleRule).code, csvp::ErrorCode::Ok);
+	EXPECT_EQ(doubleValidator.validateField(0U, "1.0001", doubleRule).code,
+		csvp::ErrorCode::RangeError);
+}
+
 } // anonymous namespace

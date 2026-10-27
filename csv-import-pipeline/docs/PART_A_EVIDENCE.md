@@ -479,3 +479,34 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a13-schema-contract`。
+
+## A-14：数值溢出和非有限浮点值绕过校验
+
+### 复现与根因
+
+旧整数校验使用 `strtol()` 但不检查 `errno`，浮点校验使用 `strtod()` 但同样不检查上溢/下溢，并允许 `nan`、`inf`。NaN 与上下界比较均为 false，可绕过范围限制。整数范围又把 `double` 上下界强制转为平台宽度不一致的 `long`，存在截断和跨平台差异。
+
+### 修复
+
+- 整数使用 `std::from_chars` 完整转换为固定宽度 `std::int64_t`，检查全部字符和溢出错误。
+- 浮点使用完整转换并检查 `ERANGE` 与 `std::isfinite()`，拒绝 `nan`、`±inf` 和 `1e9999`。
+- 数值文本不接受前导空白，避免 C 转换函数静默跳过字符。
+- 整数与浮点范围统一转换为 `long double` 后比较，不再把配置边界截断成 `long`。
+- 测试覆盖 64 位整数上下限及正负溢出、负零、非有限值和范围精确边界。
+- 本次涉及的 `validator.h/.cpp` 按 WPS 规范整理为 include guard、Tab、独占行花括号、成员 `m_` 前缀和英文注释/错误文本。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Validator.RejectsNumericOverflowAndNonFiniteValues:Validator.NumericRangeIncludesExactBoundaries
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Validator.RejectsNumericOverflowAndNonFiniteValues:Validator.NumericRangeIncludesExactBoundaries
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Validator.RejectsNumericOverflowAndNonFiniteValues:Validator.NumericRangeIncludesExactBoundaries
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 2/2 通过，ASan 零报告；Release 与 Debug 全量回归均为 37/37。
+
+### Git 证据
+
+Git 标签：`part-a-a14-numeric-validation`。
