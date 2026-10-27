@@ -17,9 +17,6 @@ build-*/
 *.VC.db
 *.VC.opendb
 
-# third-party (bundled, not part of submission)
-third_party/
-
 # temp
 *.tmp
 *.log
