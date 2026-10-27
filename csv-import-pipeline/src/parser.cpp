@@ -176,16 +176,16 @@ bool CsvParser::splitLineToFields(const char *line, std::size_t length, Row &row
 	std::string field;
 	field.reserve(256);
 
-	while (position < length)
+	while (true)
 	{
-		const char character = line[position];
-		if (m_config.trim_spaces && (character == ' ' || character == '\t') && field.empty())
+		while (position < length && m_config.trim_spaces
+			&& (line[position] == ' ' || line[position] == '\t'))
 		{
 			++position;
-			continue;
 		}
 
-		if (character == '"')
+		field.clear();
+		if (position < length && line[position] == '"')
 		{
 			if (!handleQuotedField(line, position, length, field))
 				return false;
@@ -199,41 +199,48 @@ bool CsvParser::splitLineToFields(const char *line, std::size_t length, Row &row
 				m_lastError = "Unexpected character after quoted field";
 				return false;
 			}
-			if (position < length)
-				++position;
 			row.append(field);
-			field.clear();
-			continue;
 		}
-
-		if (character == m_config.delimiter)
+		else
 		{
+			while (position < length && line[position] != m_config.delimiter)
+			{
+				if (line[position] == '"')
+				{
+					m_lastError = "Unexpected quote in unquoted field";
+					return false;
+				}
+
+				const std::size_t characterLength = encodedCharacterLength(line, position, length);
+				if (characterLength == 0)
+				{
+					m_lastError = isGbkEncoding()
+						? "Invalid GBK byte sequence"
+						: "Invalid UTF-8 byte sequence";
+					return false;
+				}
+				field.append(line + position, characterLength);
+				position += characterLength;
+			}
+
+			if (m_config.trim_spaces)
+			{
+				while (!field.empty() && (field.back() == ' ' || field.back() == '\t'))
+					field.pop_back();
+			}
 			row.append(field);
-			field.clear();
-			++position;
-			continue;
 		}
 
-		const std::size_t characterLength = encodedCharacterLength(line, position, length);
-		if (characterLength == 0)
-		{
-			m_lastError = isGbkEncoding() ? "Invalid GBK byte sequence" : "Invalid UTF-8 byte sequence";
-			return false;
-		}
-		field.append(line + position, characterLength);
-		position += characterLength;
-	}
+		if (position == length)
+			return true;
 
-	if (!field.empty() || position > 0)
-	{
-		if (m_config.trim_spaces)
+		++position;
+		if (position == length)
 		{
-			while (!field.empty() && (field.back() == ' ' || field.back() == '\t'))
-				field.pop_back();
+			row.append("");
+			return true;
 		}
-		row.append(field);
 	}
-	return true;
 }
 
 bool CsvParser::handleQuotedField(const char *line, std::size_t &position, std::size_t length,
@@ -245,6 +252,12 @@ bool CsvParser::handleQuotedField(const char *line, std::size_t &position, std::
 		const char character = line[position];
 		if (character == '"')
 		{
+			if (position + 1 < length && line[position + 1] == '"')
+			{
+				field.push_back('"');
+				position += 2;
+				continue;
+			}
 			++position;
 			return true;
 		}

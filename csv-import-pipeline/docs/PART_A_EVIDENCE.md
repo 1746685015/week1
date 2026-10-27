@@ -300,3 +300,33 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a7-wide-line-number`。
+
+## A-8：CSV 转义双引号及字段边界解析错误
+
+### 复现与根因
+
+旧 `handleQuotedField()` 遇到第一个 `"` 就结束字段，无法按 CSV 规则把 `""` 还原为单个字面双引号。因此 `"he said ""hi"""` 会被提前截断。原字段循环还允许双引号出现在未加引号字段中，并在引号字段位于行末或行尾有分隔符时存在重复追加/漏加空字段的边界风险。
+
+### 修复
+
+- 引号字段中的连续 `""` 解析为一个字面 `"`，只有非转义的单个 `"` 才结束字段。
+- 按“每次完整解析一个字段”的方式重写切分循环，明确处理引号字段、普通字段、分隔符和行尾。
+- 支持空引号字段、引号内分隔符、位于行末的引号字段及末尾空字段。
+- 未加引号字段中出现 `"`、引号未闭合、结束引号后存在非法字符时返回明确错误。
+- 启用原 `QuotedEscapedQuote` 用例，并新增字段边界与非法引号测试。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.QuotedEscapedQuote:Parser.QuotedFieldBoundaries:Parser.RejectsMalformedQuotes
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.QuotedEscapedQuote:Parser.QuotedFieldBoundaries:Parser.RejectsMalformedQuotes
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.QuotedEscapedQuote:Parser.QuotedFieldBoundaries:Parser.RejectsMalformedQuotes
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 3/3 通过，ASan 零报告；Release 与 Debug 全量回归均执行 29 项，29 项全部通过。仅 A-9 和 Part B 的关闭测试仍保持 disabled。
+
+### Git 证据
+
+Git 标签：`part-a-a8-quoted-fields`。

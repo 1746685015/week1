@@ -233,10 +233,10 @@ TEST(Parser, EmptyFile) {
 }
 
 // ============================================================
-// Parser.DISABLED_QuotedEscapedQuote
+// Parser.QuotedEscapedQuote
 // 现象见 docs/KNOWN_ISSUES.md #9。修复后去掉前缀 DISABLED_ 启用验证。
 // ============================================================
-TEST(Parser, DISABLED_QuotedEscapedQuote) {
+TEST(Parser, QuotedEscapedQuote) {
     csvp::CsvParser::Config cfg;
     cfg.has_header = true;
     csvp::CsvParser parser(cfg);
@@ -250,6 +250,76 @@ TEST(Parser, DISABLED_QuotedEscapedQuote) {
     EXPECT_EQ(row[1], "he said \"hi\"");
 
     EXPECT_EQ(row[2], "x");
+}
+
+TEST(Parser, QuotedFieldBoundaries)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_quoted_boundaries_" + std::to_string(uniqueValue) + ".csv");
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "one,two,three,four\n"
+			<< "\"\",\"a,b\",plain,\"last\"\n"
+			<< "a,b,c,\n";
+	}
+
+	{
+		csvp::CsvParser parser;
+		ASSERT_TRUE(parser.parse(path.string().c_str()));
+		csvp::Row row;
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 4U);
+		EXPECT_TRUE(row[0].empty());
+		EXPECT_EQ(row[1], "a,b");
+		EXPECT_EQ(row[2], "plain");
+		EXPECT_EQ(row[3], "last");
+
+		ASSERT_TRUE(parser.readRow(row));
+		ASSERT_EQ(row.size(), 4U);
+		EXPECT_TRUE(row[3].empty());
+	}
+	std::filesystem::remove(path);
+}
+
+TEST(Parser, RejectsMalformedQuotes)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path unquotedPath = std::filesystem::temp_directory_path()
+		/ ("csvp_unquoted_quote_" + std::to_string(uniqueValue) + ".csv");
+	const std::filesystem::path unclosedPath = std::filesystem::temp_directory_path()
+		/ ("csvp_unclosed_quote_" + std::to_string(uniqueValue) + ".csv");
+	{
+		std::ofstream output(unquotedPath, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "ab\"cd,tail\n";
+	}
+	{
+		std::ofstream output(unclosedPath, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << "\"unclosed,tail\n";
+	}
+
+	csvp::CsvParser::Config config;
+	config.has_header = false;
+	{
+		csvp::CsvParser parser(config);
+		ASSERT_TRUE(parser.parse(unquotedPath.string().c_str()));
+		csvp::Row row;
+		EXPECT_FALSE(parser.readRow(row));
+		EXPECT_NE(parser.lastError().find("Unexpected quote"), std::string::npos);
+	}
+	{
+		csvp::CsvParser parser(config);
+		ASSERT_TRUE(parser.parse(unclosedPath.string().c_str()));
+		csvp::Row row;
+		EXPECT_FALSE(parser.readRow(row));
+		EXPECT_NE(parser.lastError().find("Unclosed quote"), std::string::npos);
+	}
+
+	std::filesystem::remove(unquotedPath);
+	std::filesystem::remove(unclosedPath);
 }
 
 // ============================================================
