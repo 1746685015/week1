@@ -735,3 +735,27 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a23-regex-cache`。
+
+## A-24：`default_val` 字段缺少可执行契约
+
+### 契约审计
+
+在周作业要求、课程“二、任务发布”、项目 `README.md` 和报告模板中检索 `default_val`、`default value` 与“默认值”，均未找到对该字段生效时机、空值判定、类型转换、校验顺序或错误处理的定义。当前只有 `ColumnRule::default_val` 字段及“空=不设默认”的简短注释，信息不足以唯一确定导入行为。
+
+### 处理结论
+
+- 不凭空实现默认值填充，避免改变老师未定义的导入语义和既有验收行为。
+- 保留字段以维持公开结构体接口兼容性，并把“当前未被流水线使用”记录为已知限制。
+- 本项是契约审计，不修改可执行代码，因此没有人为制造重复测试或功能提交。
+
+### 验证证据
+
+```powershell
+rg -n -i "default_val|default value|默认值" tmp/pdfs/weekly-homework-layout.txt tmp/pdfs/course-build-layout.txt csv-import-pipeline/csv-import-pipeline/README.md csv-import-pipeline/csv-import-pipeline/docs/REPORT_TEMPLATE.md csv-import-pipeline/csv-import-pipeline/include/csvp/types.h
+```
+
+结果：唯一命中为 `include/csvp/types.h` 中的字段声明；两份作业要求及项目文档均未提供行为契约。由于本项不改变代码，沿用 A-23 已通过的 Release/Debug 47/47 全量回归结果。
+
+### Git 证据
+
+Git 标签：`part-a-a24-default-value-audit`。
