@@ -60,6 +60,7 @@ private:
 	static constexpr std::size_t MAX_LINE_SIZE = 16U * 1024U * 1024U;
 
 	bool readLineFromFile();
+	bool discardLineRemainder();
 	bool splitLineToFields(const char *line, std::size_t length, Row &row);
 	bool handleQuotedField(const char *line, std::size_t &position, std::size_t length,
 		std::string &field);

@@ -602,3 +602,37 @@ ctest --test-dir build-review-baseline -C Debug --output-on-failure
 ### Git 证据
 
 Git 标签：`part-a-a17-safe-reentry`。
+
+## A-18：文件 I/O、大文件偏移及超限行恢复不完整
+
+### 审计与新发现
+
+A-6 已用顺序 64 KiB 流式读取替换逐行 `fseek(long)` 和文件大小预计算，因此 32 位 `long` 偏移及失败文件长度转为巨大 `size_t` 的旧风险已经消失。A-11 又将 `fread` 错误与 EOF 分离。
+
+继续检查发现：单行超过 16 MiB 时旧逻辑立即返回，但没有消费该物理行的剩余字节。调用方跳过错误并继续后，剩余片段可能被误解析成新行；该错误的行号也没有递增。
+
+### 修复
+
+- 超过 16 MiB 时持续按块读取并丢弃，直到该物理行的 LF 或 EOF；不使用 seek，也不保留残片。
+- 丢弃过程中继续准确累计 `bytesRead`，并单独报告可能出现的底层读取错误。
+- 读取阶段错误计入当前物理行号。
+- 新增 16 MiB+1 字节超限行后紧跟合法行的测试，断言超限行为第 1 行、合法行为第 2 行且字段为 `next,tail`。
+- 同时回归跨 64 KiB 读取块和不存在文件错误路径。
+
+### 验证
+
+```powershell
+build-review-baseline/Release/csvp_tests.exe --gtest_filter=Parser.OversizedLineDoesNotLeakIntoNextRow:Parser.LineCrossesReadBufferBoundary:Pipeline.MissingFile
+build-review-baseline/Debug/csvp_tests.exe --gtest_filter=Parser.OversizedLineDoesNotLeakIntoNextRow:Parser.LineCrossesReadBufferBoundary:Pipeline.MissingFile
+build-review-asan-msvc/Debug/csvp_tests.exe --gtest_filter=Parser.OversizedLineDoesNotLeakIntoNextRow:Parser.LineCrossesReadBufferBoundary:Pipeline.MissingFile
+ctest --test-dir build-review-baseline -C Release --output-on-failure
+ctest --test-dir build-review-baseline -C Debug --output-on-failure
+```
+
+结果：Release、Debug、ASan Debug 定向测试均为 3/3 通过，ASan 零报告；Release 与 Debug 全量回归均为 43/43。
+
+限制：标准 `FILE*` 公共接口无法可靠注入“成功打开后发生硬件读取失败”，因此底层 `ferror` 分支已进行源码审查但未伪造不可重复的硬件故障测试。
+
+### Git 证据
+
+Git 标签：`part-a-a18-robust-io`。

@@ -119,9 +119,10 @@ CsvParser::ReadStatus CsvParser::readNext(Row &row)
 	m_lastError.clear();
 	if (!readLineFromFile())
 	{
-		return m_lastError.empty()
-			? ReadStatus::EofReadStatus
-			: ReadStatus::ErrorReadStatus;
+		if (m_lastError.empty())
+			return ReadStatus::EofReadStatus;
+		++m_lineNumber;
+		return ReadStatus::ErrorReadStatus;
 	}
 
 	if (m_lineEndedWithNewline && !m_lineBuffer.empty() && m_lineBuffer.back() == '\r')
@@ -173,6 +174,7 @@ bool CsvParser::readLineFromFile()
 		if (m_lineBuffer.size() + segmentLength > MAX_LINE_SIZE)
 		{
 			m_lastError = "CSV line exceeds the 16 MB limit";
+			discardLineRemainder();
 			return false;
 		}
 
@@ -186,6 +188,38 @@ bool CsvParser::readLineFromFile()
 			m_lineEndedWithNewline = true;
 			return true;
 		}
+	}
+}
+
+bool CsvParser::discardLineRemainder()
+{
+	while (true)
+	{
+		if (m_readPosition >= m_readSize)
+		{
+			m_readSize = fread(m_readBuffer.data(), 1, m_readBuffer.size(), m_file);
+			m_readPosition = 0;
+			if (m_readSize == 0)
+			{
+				if (ferror(m_file))
+				{
+					m_lastError = "Failed to read CSV file while discarding oversized line";
+					return false;
+				}
+				return true;
+			}
+		}
+
+		const char *begin = m_readBuffer.data() + m_readPosition;
+		const std::size_t available = m_readSize - m_readPosition;
+		const char *newline = static_cast<const char *>(std::memchr(begin, '\n', available));
+		const std::size_t consumed = newline
+			? static_cast<std::size_t>(newline - begin) + 1U
+			: available;
+		m_readPosition += consumed;
+		m_bytesRead += consumed;
+		if (newline)
+			return true;
 	}
 }
 

@@ -248,6 +248,38 @@ TEST(Parser, LineCrossesReadBufferBoundary)
 	std::filesystem::remove(path);
 }
 
+TEST(Parser, OversizedLineDoesNotLeakIntoNextRow)
+{
+	const auto uniqueValue = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path()
+		/ ("csvp_oversized_line_" + std::to_string(uniqueValue) + ".csv");
+	const std::string oversizedField(16U * 1024U * 1024U + 1U, 'x');
+	{
+		std::ofstream output(path, std::ios::binary);
+		ASSERT_TRUE(output.is_open());
+		output << oversizedField << "\nnext,tail\n";
+	}
+
+	csvp::CsvParser::Config config;
+	config.has_header = false;
+	{
+		csvp::CsvParser parser(config);
+		ASSERT_TRUE(parser.parse(path.string().c_str()));
+		csvp::Row row;
+		EXPECT_EQ(parser.readNext(row), csvp::CsvParser::ReadStatus::ErrorReadStatus);
+		EXPECT_EQ(parser.lineNumber(), 1U);
+		EXPECT_NE(parser.lastError().find("16 MB limit"), std::string::npos);
+
+		EXPECT_EQ(parser.readNext(row), csvp::CsvParser::ReadStatus::RowReadStatus);
+		EXPECT_EQ(parser.lineNumber(), 2U);
+		ASSERT_EQ(row.size(), 2U);
+		EXPECT_EQ(row[0], "next");
+		EXPECT_EQ(row[1], "tail");
+		EXPECT_EQ(parser.readNext(row), csvp::CsvParser::ReadStatus::EofReadStatus);
+	}
+	std::filesystem::remove(path);
+}
+
 TEST(Parser, LineNumberUsesFixedWidthType)
 {
 	static_assert(std::is_same_v<decltype(std::declval<const csvp::CsvParser &>().lineNumber()),
