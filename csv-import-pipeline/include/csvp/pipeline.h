@@ -51,8 +51,10 @@ public:
 	Stats stats() const;
 
 private:
+	Result runImport(const char *filepath);
 	void validateAndCollect(Row &row, std::uint64_t lineNumber, const CsvParser &parser,
 		Result &result);
+	void completeStreamingTask();
 	void joinWorker();
 
 	Config m_config;

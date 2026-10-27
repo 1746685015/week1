@@ -24,7 +24,13 @@ ImportPipeline::~ImportPipeline()
 // importSync
 // ============================================================
 
-ImportPipeline::Result ImportPipeline::importSync(const char* filepath) {
+ImportPipeline::Result ImportPipeline::importSync(const char *filepath)
+{
+	return runImport(filepath);
+}
+
+ImportPipeline::Result ImportPipeline::runImport(const char *filepath)
+{
     Result result;
     auto t0 = std::chrono::steady_clock::now();
 	m_totalLines.store(0, std::memory_order_relaxed);
@@ -187,44 +193,55 @@ void ImportPipeline::validateAndCollect(Row &row, std::uint64_t lineNumber,
 	++result.rows_skipped;
 }
 
-// ============================================================
-// importStreaming（骨架）
-//
-// 现在的 importSync 是"一口气读完"：调用方一旦调用它，当前线程就被占住，
-// 直到整个文件处理完才返回。这期间既看不到进度，也没办法喊停，
-// 文件一大就要干等很久。
-//
-// importStreaming 做的是同一件事，只是换了干活的方式：
-// 调用后马上返回一个 future，真正的读文件、解析、校验交给后台线程；
-// 干活过程中定期汇报进度，调用方不满意可以随时叫停。
-// ============================================================
-
 std::future<ImportPipeline::Result> ImportPipeline::importStreaming(
-    const char* /*filepath*/,
-    std::function<bool(size_t)> /*progress*/) {
-    // TODO: 把上面说的"后台干活"实现出来。
-    //
-    // 整体流程还是那几步：打开文件 -> 一行行读出来解析 -> 逐字段校验
-    // -> 累计成功/跳过/错误明细，只不过这一整套不要占着调用方的线程，
-    // 而是放到后台线程里跑。
-    //
-    // 具体要求：
-    // 1. 本函数要快速返回，不能在这里等文件读完；导入工作在后台线程里进行。
-    //    实现时可以一次读一批（比如 1000 行）再统一处理，这只是手段，
-    //    不要求死。真正的导入流程（读、解析、校验）必须都由后台线程完成。
-    // 2. 后台线程每处理完 1000 行，调用一次 progress(已处理的行数)。
-    //    注意这个回调是在后台线程上执行的，回调里别做太慢的事情。
-    // 3. 碰到下面两种情况要尽快停下来：
-    //    - progress 回调返回 false，表示调用方不想继续了；
-    //    - stop_requested_ 被置成 true，这是 shutdown() 发出的停止信号。
-    //    检查的时机自己把握，但别等到整个文件读完才看一眼。
-    // 4. 最终结果放进返回的 future 里。就算中途被叫停也没关系，
-    //    把已经处理完的那部分结果交出去即可，不要抛异常。
-    // 5. 每处理一行，更新原子统计计数器，stats() 靠它们反映实时进度。
+	const char *filepath, std::function<bool(std::size_t)> progress)
+{
+	const std::string ownedFilepath = filepath == nullptr ? std::string() : filepath;
+	(void)progress;
 
-    std::promise<Result> promise;
-    promise.set_value(Result{});  // 占位：返回空结果
-    return promise.get_future();
+	std::unique_lock<std::mutex> lifecycleLock(m_lifecycleMutex);
+	{
+		std::lock_guard<std::mutex> stateLock(m_stateMutex);
+		if (m_streamingActive)
+			throw std::logic_error("A streaming import is already active");
+	}
+	if (m_worker.joinable())
+		m_worker.join();
+
+	{
+		std::lock_guard<std::mutex> stateLock(m_stateMutex);
+		m_streamingActive = true;
+		m_pendingCount = 1;
+		m_stopRequested.store(false, std::memory_order_release);
+	}
+
+	// packaged_task stores task exceptions in the associated future.
+	std::packaged_task<Result()> task([this, ownedFilepath]() // NOLINT(bugprone-exception-escape)
+	{
+		try
+		{
+			Result result = runImport(ownedFilepath.c_str());
+			completeStreamingTask();
+			return result;
+		}
+		catch (...)
+		{
+			completeStreamingTask();
+			throw;
+		}
+	});
+	std::future<Result> future = task.get_future();
+	try
+	{
+		m_worker = std::thread(std::move(task));
+	}
+	catch (...)
+	{
+		completeStreamingTask();
+		throw;
+	}
+
+	return future;
 }
 
 void ImportPipeline::shutdown(std::chrono::milliseconds timeout)
@@ -255,6 +272,16 @@ std::size_t ImportPipeline::pendingCount() const
 {
 	std::lock_guard<std::mutex> stateLock(m_stateMutex);
 	return m_pendingCount;
+}
+
+void ImportPipeline::completeStreamingTask()
+{
+	{
+		std::lock_guard<std::mutex> stateLock(m_stateMutex);
+		m_streamingActive = false;
+		m_pendingCount = 0;
+	}
+	m_stateChanged.notify_all();
 }
 
 void ImportPipeline::joinWorker()

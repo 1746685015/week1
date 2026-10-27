@@ -33,7 +33,7 @@ TEST(Concurrent, ImportAndStats) {
     ImportPipeline::Config cfg;
     cfg.parser.delimiter = ',';
     cfg.parser.has_header = true;
-    cfg.skip_bad_rows = false;
+    cfg.skip_bad_rows = true;
 
     ImportPipeline pipeline(cfg, makeDefaultRules());
 

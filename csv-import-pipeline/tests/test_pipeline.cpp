@@ -269,29 +269,43 @@ TEST(Pipeline, InvalidRegexErrorIsTraceable)
 	std::filesystem::remove(path);
 }
 
-// ============================================================
-// Pipeline.StreamingImportNotImplemented (PASS - skeleton check)
-// ============================================================
-TEST(Pipeline, StreamingImportNotImplemented) {
-    ImportPipeline::Config cfg;
-    ImportPipeline pipeline(cfg, makeDefaultRules());
+TEST(Pipeline, StreamingImportMatchesSyncImport)
+{
+	ImportPipeline::Config config;
+	ImportPipeline synchronousPipeline(config, makeDefaultRules());
+	ImportPipeline streamingPipeline(config, makeDefaultRules());
+	const ImportPipeline::Result synchronousResult =
+		synchronousPipeline.importSync(dataPath("sample_utf8.csv").c_str());
 
-    auto future = pipeline.importStreaming("dummy.csv",
-        [](size_t) { return true; });
+	std::future<ImportPipeline::Result> future = streamingPipeline.importStreaming(
+		dataPath("sample_utf8.csv").c_str(), [](std::size_t)
+		{
+			return true;
+		});
+	const ImportPipeline::Result streamingResult = future.get();
 
-    auto result = future.get();
-    // Skeleton should return empty result without crashing
-    EXPECT_EQ(result.rows_imported, 0u);
+	EXPECT_EQ(streamingResult.rows_imported, synchronousResult.rows_imported);
+	EXPECT_EQ(streamingResult.rows_skipped, synchronousResult.rows_skipped);
+	EXPECT_EQ(streamingResult.errors.size(), synchronousResult.errors.size());
+	EXPECT_EQ(streamingPipeline.pendingCount(), 0U);
 }
 
-// ============================================================
-// Pipeline.ShutdownNotImplemented (PASS - skeleton check)
-// ============================================================
-TEST(Pipeline, ShutdownNotImplemented) {
-    ImportPipeline::Config cfg;
-    ImportPipeline pipeline(cfg, {});
-    // Should not crash
-    pipeline.shutdown(std::chrono::milliseconds(100));
+TEST(Pipeline, StreamingMissingFile)
+{
+	ImportPipeline pipeline(ImportPipeline::Config{}, makeDefaultRules());
+	std::future<ImportPipeline::Result> future = pipeline.importStreaming(
+		"missing_streaming_file.csv", [](std::size_t)
+		{
+			return true;
+		});
+
+	EXPECT_EQ(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
+	const ImportPipeline::Result result = future.get();
+	EXPECT_EQ(result.rows_imported, 0U);
+	EXPECT_EQ(result.rows_skipped, 0U);
+	ASSERT_EQ(result.errors.size(), 1U);
+	EXPECT_NE(result.errors[0].raw_line.find("Failed to open file"), std::string::npos);
+	EXPECT_EQ(pipeline.pendingCount(), 0U);
 }
 
 } // anonymous namespace
