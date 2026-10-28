@@ -223,8 +223,6 @@ bool CsvParser::splitLineToFields(const char *line, std::size_t length, Row &row
 {
 	row.clear();
 	std::size_t position = 0;
-	std::string field;
-	field.reserve(256);
 
 	while (true)
 	{
@@ -234,7 +232,7 @@ bool CsvParser::splitLineToFields(const char *line, std::size_t length, Row &row
 			++position;
 		}
 
-		field.clear();
+		std::string &field = row.appendField();
 		if (position < length && line[position] == '"')
 		{
 			if (!handleQuotedField(line, position, length, field))
@@ -249,7 +247,6 @@ bool CsvParser::splitLineToFields(const char *line, std::size_t length, Row &row
 				m_lastError = "Unexpected character after quoted field";
 				return false;
 			}
-			row.append(field);
 		}
 		else
 		{
@@ -278,7 +275,6 @@ bool CsvParser::splitLineToFields(const char *line, std::size_t length, Row &row
 				while (!field.empty() && (field.back() == ' ' || field.back() == '\t'))
 					field.pop_back();
 			}
-			row.append(field);
 		}
 
 		if (position == length)
@@ -287,7 +283,7 @@ bool CsvParser::splitLineToFields(const char *line, std::size_t length, Row &row
 		++position;
 		if (position == length)
 		{
-			row.append("");
+			row.appendField();
 			return true;
 		}
 	}

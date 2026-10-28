@@ -230,3 +230,36 @@ build-review-baseline/Release/csvp_bench.exe `
 提交信息：`fix(bench): report complete rows and error counts`。
 
 标签：`part-c-c4-benchmark-statistics`。
+
+## C5：复用 Row 字段存储并消除字段复制
+
+### 分步实验与取舍
+
+所有 100k 实验均使用同一台机器、同一 Release 构建、同一 `data/sample_100k.csv`、5 轮、不写 sidecar；每轮均分类 98,000 条合法记录和 2,000 条非法记录。结果如下：
+
+| 实验 | 唯一主要变化 | 平均耗时 | 平均吞吐 | 平均输入吞吐 | 峰值工作集 |
+|---|---|---:|---:|---:|---:|
+| P0 | C4 原始实现 | 134.034 ms | 746,079.798 rows/s | 23.476 MB/s | 6,021,120 bytes |
+| P1 | 删除每行临时字段的 `reserve(256)` | 131.908 ms | 758,105.398 rows/s | 23.854 MB/s | 6,041,600 bytes |
+| P2 | `Row::clear()` 仅重置逻辑字段数，`append()` 复用槽位 | 123.542 ms | 809,439.096 rows/s | 25.470 MB/s | 6,107,136 bytes |
+| P3 | 解析器通过 `appendField()` 直接写入复用槽位 | 46.203 ms | 2,164,369.117 rows/s | 68.104 MB/s | 6,017,024 bytes |
+
+P1 单独收益约 1.6%，P2 相对 P0 的总耗时下降约 7.8%；P3 相对 P0 的总耗时下降约 65.5%，处理吞吐约为 2.90 倍，且峰值工作集没有增加。最终保留三项组合：去掉没有稳定价值的固定 256 字节临时预留、复用 Row 内已有字符串容量，并直接写入目标字段以消除逐字段临时字符串复制。没有引入会跨行悬空的 `string_view`。
+
+原始逐轮报告：`docs/evidence/part_c_c5_p0_100k.txt`、`part_c_c5_p1_no_reserve_100k.txt`、`part_c_c5_p2_row_reuse_100k.txt`、`part_c_c5_p3_direct_field_100k.txt`。
+
+### 正确性与大文件复核
+
+- 新增 `Row.ClearHidesPreviousFieldsAndReusesSlots`，验证 `clear()` 后逻辑大小归零、旧字段不可见、有效性状态复位、越界 `at()` 抛出异常，并覆盖直接字段写入。
+- Parser、Row、Pipeline 定向回归 34/34 通过；Release 与 Debug 全量回归均为 65/65 通过。
+- `src/parser.cpp` 使用 clang-tidy 的 `clang-analyzer-*` 与 `bugprone-*` 检查，退出码 0、项目代码可见告警/错误 0；MSVC `/W4` 构建无 C++ 警告。
+- 1 GB + 完整 sidecar 实测：imported=9,990,000、skipped=10,000、processed=10,000,000、total errors=10,000、elapsed=18,427.118 ms、542,678.471 rows/s、54.479 MB/s，峰值工作集 5,054,464 bytes。相对 C4 同类实测耗时降低约 29.5%，吞吐提高约 41.9%。
+- 独立日志验证仍为 10,000 条、mismatch=0，SHA-256 仍为 `C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C`，证明性能修改没有少记错误或改变原始内容。
+
+1 GB 报告：`docs/evidence/part_c_c5_1gb_report.txt`。
+
+### Git 证据
+
+提交信息：`perf(parser): reuse row field storage`。
+
+标签：`part-c-c5-row-reuse`。

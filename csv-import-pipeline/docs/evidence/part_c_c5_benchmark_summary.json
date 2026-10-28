@@ -1,0 +1,50 @@
+{
+  "dataset": "data/sample_100k.csv",
+  "input_bytes": 3146588,
+  "repeat_count": 5,
+  "release_experiments": [
+    {
+      "name": "P0 C4 baseline",
+      "average_elapsed_ms": 134.034,
+      "average_rows_per_second": 746079.798,
+      "average_input_mb_per_second": 23.476,
+      "peak_working_set_bytes": 6021120
+    },
+    {
+      "name": "P1 remove temporary reserve",
+      "average_elapsed_ms": 131.908,
+      "average_rows_per_second": 758105.398,
+      "average_input_mb_per_second": 23.854,
+      "peak_working_set_bytes": 6041600
+    },
+    {
+      "name": "P2 reuse Row slots",
+      "average_elapsed_ms": 123.542,
+      "average_rows_per_second": 809439.096,
+      "average_input_mb_per_second": 25.470,
+      "peak_working_set_bytes": 6107136
+    },
+    {
+      "name": "P3 direct field writes",
+      "average_elapsed_ms": 46.203,
+      "average_rows_per_second": 2164369.117,
+      "average_input_mb_per_second": 68.104,
+      "peak_working_set_bytes": 6017024
+    }
+  ],
+  "full_dataset_verification": {
+    "dataset": "data/sample_1gb.csv",
+    "input_bytes": 1003898922,
+    "processed_rows": 10000000,
+    "rows_imported": 9990000,
+    "rows_skipped": 10000,
+    "total_error_count": 10000,
+    "elapsed_ms": 18427.118,
+    "rows_per_second": 542678.471,
+    "input_mb_per_second": 54.479,
+    "peak_working_set_bytes": 5054464,
+    "error_log_records": 10000,
+    "error_log_mismatches": 0,
+    "error_log_sha256": "C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C"
+  }
+}

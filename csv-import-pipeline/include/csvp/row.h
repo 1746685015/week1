@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <stdexcept>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -22,17 +23,18 @@ public:
 
 	explicit Row(std::vector<std::string> fields)
 		: m_fields(std::move(fields))
+		, m_size(m_fields.size())
 	{
 	}
 
 	std::size_t size() const
 	{
-		return m_fields.size();
+		return m_size;
 	}
 
 	bool empty() const
 	{
-		return m_fields.empty();
+		return m_size == 0U;
 	}
 
 	const std::string &operator[](std::size_t index) const
@@ -47,12 +49,16 @@ public:
 
 	const std::string &at(std::size_t index) const
 	{
-		return m_fields.at(index);
+		if (index >= m_size)
+		{
+			throw std::out_of_range("Row field index is out of range");
+		}
+		return m_fields[index];
 	}
 
 	bool tryToInt(std::size_t index, int &value) const
 	{
-		if (index >= m_fields.size() || m_fields[index].empty())
+		if (index >= m_size || m_fields[index].empty())
 			return false;
 
 		const std::string &text = m_fields[index];
@@ -69,7 +75,7 @@ public:
 
 	bool tryToDouble(std::size_t index, double &value) const
 	{
-		if (index >= m_fields.size() || m_fields[index].empty())
+		if (index >= m_size || m_fields[index].empty())
 			return false;
 
 		const std::string &text = m_fields[index];
@@ -89,7 +95,7 @@ public:
 
 	bool tryToBool(std::size_t index, bool &value) const
 	{
-		if (index >= m_fields.size())
+		if (index >= m_size)
 			return false;
 
 		const std::string &text = m_fields[index];
@@ -124,7 +130,7 @@ public:
 	const std::string &toString(std::size_t index) const
 	{
 		static const std::string EMPTY_STRING;
-		if (index >= m_fields.size())
+		if (index >= m_size)
 			return EMPTY_STRING;
 		return m_fields[index];
 	}
@@ -138,12 +144,28 @@ public:
 
 	void append(const std::string &field)
 	{
-		m_fields.push_back(field);
+		std::string &destination = appendField();
+		destination = field;
+	}
+
+	std::string &appendField()
+	{
+		if (m_size < m_fields.size())
+		{
+			m_fields[m_size].clear();
+		}
+		else
+		{
+			m_fields.emplace_back();
+		}
+
+		++m_size;
+		return m_fields[m_size - 1U];
 	}
 
 	void clear()
 	{
-		m_fields.clear();
+		m_size = 0U;
 		m_isValid = true;
 	}
 
@@ -159,6 +181,7 @@ public:
 
 private:
 	std::vector<std::string> m_fields;
+	std::size_t m_size = 0U;
 	bool m_isValid = true;
 };
 

@@ -45,6 +45,34 @@ TEST(Row, TypedConversions)
 	EXPECT_DOUBLE_EQ(row.toDouble(2), 0.0);
 }
 
+TEST(Row, ClearHidesPreviousFieldsAndReusesSlots)
+{
+	csvp::Row row;
+	row.append("a long field value that owns dynamic storage");
+	row.append("stale");
+	row.setValid(false);
+
+	row.clear();
+	EXPECT_TRUE(row.empty());
+	EXPECT_EQ(row.size(), 0U);
+	EXPECT_TRUE(row.isValid());
+	EXPECT_TRUE(row.toString(0U).empty());
+	int value = 0;
+	EXPECT_FALSE(row.tryToInt(0U, value));
+	EXPECT_THROW((void)row.at(0U), std::out_of_range);
+
+	row.append("fresh");
+	EXPECT_FALSE(row.empty());
+	ASSERT_EQ(row.size(), 1U);
+	EXPECT_EQ(row[0U], "fresh");
+	EXPECT_THROW((void)row.at(1U), std::out_of_range);
+
+	std::string &directField = row.appendField();
+	directField.append("direct");
+	ASSERT_EQ(row.size(), 2U);
+	EXPECT_EQ(row[1U], "direct");
+}
+
 // ============================================================
 // Validator.TypeCheckString (PASS)
 // ============================================================
