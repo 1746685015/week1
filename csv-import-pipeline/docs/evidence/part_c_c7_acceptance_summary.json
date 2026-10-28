@@ -1,0 +1,75 @@
+{
+  "tested_git_sha": "12163362e995fed8256c11d15b55888a85886c7b",
+  "configuration": "Release VS2022 x64",
+  "dataset": {
+    "path": "data/sample_1gb.csv",
+    "size_bytes": 1003898922,
+    "sha256": "89FA6C306B9730EA71A782DA699C64CEC1EFC6B4097852BB457BC30ABC9477D0",
+    "data_rows": 10000000,
+    "expected_invalid_rows": 10000
+  },
+  "input_buffer_bytes": 262144,
+  "error_log_buffer_bytes": 65536,
+  "runs": [
+    {
+      "run": 1,
+      "rows_imported": 9990000,
+      "rows_skipped": 10000,
+      "processed_rows": 10000000,
+      "total_error_count": 10000,
+      "elapsed_ms": 18021.592,
+      "rows_per_second": 554889.922,
+      "input_mb_per_second": 55.705,
+      "peak_working_set_bytes": 5189632,
+      "error_log_complete": true
+    },
+    {
+      "run": 2,
+      "rows_imported": 9990000,
+      "rows_skipped": 10000,
+      "processed_rows": 10000000,
+      "total_error_count": 10000,
+      "elapsed_ms": 17951.359,
+      "rows_per_second": 557060.883,
+      "input_mb_per_second": 55.923,
+      "peak_working_set_bytes": 5361664,
+      "error_log_complete": true
+    },
+    {
+      "run": 3,
+      "rows_imported": 9990000,
+      "rows_skipped": 10000,
+      "processed_rows": 10000000,
+      "total_error_count": 10000,
+      "elapsed_ms": 18031.770,
+      "rows_per_second": 554576.734,
+      "input_mb_per_second": 55.674,
+      "peak_working_set_bytes": 5382144,
+      "error_log_complete": true
+    }
+  ],
+  "average_elapsed_ms": 18001.574,
+  "average_rows_per_second": 555506.986,
+  "average_input_mb_per_second": 55.767,
+  "peak_working_set_bytes": 5382144,
+  "memory_limit_bytes": 50000000,
+  "memory_limit_passed": true,
+  "error_log_verification": {
+    "verified_run_count": 3,
+    "record_count_per_run": 10000,
+    "size_bytes_per_run": 3896682,
+    "sha256_per_run": "C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C",
+    "mismatch_count_per_run": 0,
+    "passed": true,
+    "sample_physical_lines": [1001, 5000001, 10000001],
+    "sample_ids": [1000, 5000000, 10000000]
+  },
+  "large_integrity_tool": {
+    "exit_code": 0,
+    "elapsed_ms": 18471.3,
+    "status": "LARGE_IMPORT_INTEGRITY_PASS"
+  },
+  "release_tests": "65/65 passed",
+  "debug_tests": "65/65 passed",
+  "passed": true
+}

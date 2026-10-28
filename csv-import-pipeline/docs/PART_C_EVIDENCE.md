@@ -304,3 +304,40 @@ P1 单独收益约 1.6%，P2 相对 P0 的总耗时下降约 7.8%；P3 相对 P0
 提交信息：`perf(io): tune bounded input and error-log buffers`。
 
 标签：`part-c-c6-io-tuning`。
+
+## C7：指定 1 GB 文件正式验收
+
+### 固定输入与被测版本
+
+- 被测代码 SHA：`12163362e995fed8256c11d15b55888a85886c7b`（C6 实现提交）。
+- Release / VS2022 x64；输入缓冲 262,144 bytes，错误日志缓冲 65,536 bytes。
+- 输入 `data/sample_1gb.csv`：1,003,898,922 bytes；SHA-256 `89FA6C306B9730EA71A782DA699C64CEC1EFC6B4097852BB457BC30ABC9477D0`，与 C0 完整流式规格验证的文件完全一致。
+- 正式命令为 `csvp_bench data/sample_1gb.csv 3 docs/evidence/part_c_c7_final_1gb_report.txt build-review-baseline/part_c_c7_final_errors.jsonl`，退出码 0；每轮生成独立 `.run1`、`.run2`、`.run3` sidecar。
+
+### 三轮正式结果
+
+| 轮次 | imported | skipped/errors | elapsed | rows/s | MB/s | 峰值工作集 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 9,990,000 | 10,000 | 18,021.592 ms | 554,889.922 | 55.705 | 5,189,632 bytes |
+| 2 | 9,990,000 | 10,000 | 17,951.359 ms | 557,060.883 | 55.923 | 5,361,664 bytes |
+| 3 | 9,990,000 | 10,000 | 18,031.770 ms | 554,576.734 | 55.674 | 5,382,144 bytes |
+
+平均耗时 18,001.574 ms，平均吞吐 555,506.986 rows/s、55.767 MB/s。三轮均满足 imported + skipped = 10,000,000、total_error_count=10,000、内存样本=200、`error_log_complete=true`。最高峰值工作集为 5,382,144 bytes（5.382 MB / 5.133 MiB），仅占严格 50,000,000-byte 上限约 10.76%，余量 44,617,856 bytes。
+
+相对 C4 的同文件、同完整 sidecar Release 实测，平均耗时由 26,140.458 ms 降至 18,001.574 ms，约降低 31.1%；吞吐由 382,548.771 提高到 555,506.986 rows/s，约提高 45.2%。
+
+### 独立完整性复核
+
+- `verify_error_log.py` 分别完整解析三份正式 sidecar；每份均为 10,000 条、3,896,682 bytes、mismatch=0，SHA-256 均为 `C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C`。
+- 三份日志的第 1/5000/10000 条分别对应物理行 1001、5,000,001、10,000,001 和 id 1000、5,000,000、10,000,000，原始行均与指定 CSV 一致。
+- 独立生产管道验收工具再次运行，输出 imported=9,990,000、skipped=10,000、total_errors=10,000、total_lines=10,000,000、`error_log_complete=true` 和 `LARGE_IMPORT_INTEGRITY_PASS`；其 sidecar 再次得到相同条数、SHA 和 mismatch=0。
+- 正式多轮 sidecar 位于被忽略的本机构建目录，避免向仓库重复提交三份完全相同的 3.9 MB 文件；仓库内 `docs/evidence/part_c_c2_errors.jsonl` 保存了同一 SHA 的完整规范副本，正式汇总保存每轮校验值与抽样内容。
+- C6 最终配置下 Release/Debug 全量回归均为 65/65 通过，因此 Part A/B 行为未被性能优化破坏。
+
+原始 benchmark 报告：`docs/evidence/part_c_c7_final_1gb_report.txt`；机器可读验收摘要：`docs/evidence/part_c_c7_acceptance_summary.json`。
+
+### Git 证据
+
+提交信息：`test: verify 1GB import memory and integrity`。
+
+标签：`part-c-c7-1gb-acceptance`。
