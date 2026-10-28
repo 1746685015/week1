@@ -1,0 +1,1057 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="65"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="12"
+	timestamp="2026-10-28T09:46:45"
+	>
+	<testcase name="Parser.UTF8Basic" classname="Parser.UTF8Basic" time="0.0802148" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.UTF8Basic
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.UTF8Basic
+[       OK ] Parser.UTF8Basic (1 ms)
+[----------] 1 test from Parser (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (5 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.HeaderMapping" classname="Parser.HeaderMapping" time="0.0445552" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.HeaderMapping
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.HeaderMapping
+[       OK ] Parser.HeaderMapping (0 ms)
+[----------] 1 test from Parser (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.NoTrailingNewline" classname="Parser.NoTrailingNewline" time="0.0425754" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.NoTrailingNewline
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.NoTrailingNewline
+[       OK ] Parser.NoTrailingNewline (0 ms)
+[----------] 1 test from Parser (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.ReentryState" classname="Parser.ReentryState" time="0.0422774" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.ReentryState
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.ReentryState
+[       OK ] Parser.ReentryState (0 ms)
+[----------] 1 test from Parser (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.ReentryAfterOpenFailure" classname="Parser.ReentryAfterOpenFailure" time="0.0423174" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.ReentryAfterOpenFailure
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.ReentryAfterOpenFailure
+[       OK ] Parser.ReentryAfterOpenFailure (1 ms)
+[----------] 1 test from Parser (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.RejectsNullAndEmptyPaths" classname="Parser.RejectsNullAndEmptyPaths" time="0.0414633" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.RejectsNullAndEmptyPaths
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.RejectsNullAndEmptyPaths
+[       OK ] Parser.RejectsNullAndEmptyPaths (0 ms)
+[----------] 1 test from Parser (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.ChineseGBKEncoding" classname="Parser.ChineseGBKEncoding" time="0.0413568" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.ChineseGBKEncoding
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.ChineseGBKEncoding
+[       OK ] Parser.ChineseGBKEncoding (0 ms)
+[----------] 1 test from Parser (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.GbkTrailingByteMatchesDelimiter" classname="Parser.GbkTrailingByteMatchesDelimiter" time="0.0442753" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.GbkTrailingByteMatchesDelimiter
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.GbkTrailingByteMatchesDelimiter
+[       OK ] Parser.GbkTrailingByteMatchesDelimiter (3 ms)
+[----------] 1 test from Parser (3 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (3 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.LineCrossesReadBufferBoundary" classname="Parser.LineCrossesReadBufferBoundary" time="0.0493596" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.LineCrossesReadBufferBoundary
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.LineCrossesReadBufferBoundary
+[       OK ] Parser.LineCrossesReadBufferBoundary (7 ms)
+[----------] 1 test from Parser (7 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (7 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.OversizedLineDoesNotLeakIntoNextRow" classname="Parser.OversizedLineDoesNotLeakIntoNextRow" time="0.100438" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.OversizedLineDoesNotLeakIntoNextRow
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.OversizedLineDoesNotLeakIntoNextRow
+[       OK ] Parser.OversizedLineDoesNotLeakIntoNextRow (59 ms)
+[----------] 1 test from Parser (59 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (59 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.SkipsManyEmptyLinesWithoutRecursion" classname="Parser.SkipsManyEmptyLinesWithoutRecursion" time="0.0660749" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.SkipsManyEmptyLinesWithoutRecursion
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.SkipsManyEmptyLinesWithoutRecursion
+[       OK ] Parser.SkipsManyEmptyLinesWithoutRecursion (24 ms)
+[----------] 1 test from Parser (24 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (25 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.LineNumberUsesFixedWidthType" classname="Parser.LineNumberUsesFixedWidthType" time="0.0396563" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.LineNumberUsesFixedWidthType
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.LineNumberUsesFixedWidthType
+[       OK ] Parser.LineNumberUsesFixedWidthType (0 ms)
+[----------] 1 test from Parser (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.EmptyFile" classname="Parser.EmptyFile" time="0.0390747" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.EmptyFile
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.EmptyFile
+[       OK ] Parser.EmptyFile (0 ms)
+[----------] 1 test from Parser (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.QuotedEscapedQuote" classname="Parser.QuotedEscapedQuote" time="0.0396433" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.QuotedEscapedQuote
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.QuotedEscapedQuote
+[       OK ] Parser.QuotedEscapedQuote (0 ms)
+[----------] 1 test from Parser (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.QuotedFieldBoundaries" classname="Parser.QuotedFieldBoundaries" time="0.0423099" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.QuotedFieldBoundaries
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.QuotedFieldBoundaries
+[       OK ] Parser.QuotedFieldBoundaries (2 ms)
+[----------] 1 test from Parser (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (2 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.TrimsEveryUnquotedFieldOnlyWhenEnabled" classname="Parser.TrimsEveryUnquotedFieldOnlyWhenEnabled" time="0.0416448" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.TrimsEveryUnquotedFieldOnlyWhenEnabled
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.TrimsEveryUnquotedFieldOnlyWhenEnabled
+[       OK ] Parser.TrimsEveryUnquotedFieldOnlyWhenEnabled (2 ms)
+[----------] 1 test from Parser (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (3 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.RejectsMalformedQuotes" classname="Parser.RejectsMalformedQuotes" time="0.0436326" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.RejectsMalformedQuotes
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.RejectsMalformedQuotes
+[       OK ] Parser.RejectsMalformedQuotes (4 ms)
+[----------] 1 test from Parser (4 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (4 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Parser.CRLFLFMixedCR" classname="Parser.CRLFLFMixedCR" time="0.0436469" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Parser.CRLFLFMixedCR
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Parser
+[ RUN      ] Parser.CRLFLFMixedCR
+[       OK ] Parser.CRLFLFMixedCR (2 ms)
+[----------] 1 test from Parser (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (2 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Row.TypedConversions" classname="Row.TypedConversions" time="0.0527704" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Row.TypedConversions
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Row
+[ RUN      ] Row.TypedConversions
+[       OK ] Row.TypedConversions (2 ms)
+[----------] 1 test from Row (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (2 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Row.ClearHidesPreviousFieldsAndReusesSlots" classname="Row.ClearHidesPreviousFieldsAndReusesSlots" time="0.0421455" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Row.ClearHidesPreviousFieldsAndReusesSlots
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Row
+[ RUN      ] Row.ClearHidesPreviousFieldsAndReusesSlots
+[       OK ] Row.ClearHidesPreviousFieldsAndReusesSlots (2 ms)
+[----------] 1 test from Row (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (2 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.TypeCheckString" classname="Validator.TypeCheckString" time="0.038058" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.TypeCheckString
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.TypeCheckString
+[       OK ] Validator.TypeCheckString (0 ms)
+[----------] 1 test from Validator (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.TypeCheckInt" classname="Validator.TypeCheckInt" time="0.0409813" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.TypeCheckInt
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.TypeCheckInt
+[       OK ] Validator.TypeCheckInt (0 ms)
+[----------] 1 test from Validator (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.TypeCheckDouble" classname="Validator.TypeCheckDouble" time="0.0387416" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.TypeCheckDouble
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.TypeCheckDouble
+[       OK ] Validator.TypeCheckDouble (0 ms)
+[----------] 1 test from Validator (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.RequiredField" classname="Validator.RequiredField" time="0.0411795" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.RequiredField
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.RequiredField
+[       OK ] Validator.RequiredField (0 ms)
+[----------] 1 test from Validator (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.RangeCheck" classname="Validator.RangeCheck" time="0.0543801" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.RangeCheck
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.RangeCheck
+[       OK ] Validator.RangeCheck (12 ms)
+[----------] 1 test from Validator (12 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (12 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.RegexCheck" classname="Validator.RegexCheck" time="0.0519769" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.RegexCheck
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.RegexCheck
+[       OK ] Validator.RegexCheck (4 ms)
+[----------] 1 test from Validator (4 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (5 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.MultipleRules" classname="Validator.MultipleRules" time="0.0384843" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.MultipleRules
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.MultipleRules
+[       OK ] Validator.MultipleRules (0 ms)
+[----------] 1 test from Validator (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.ReportsSchemaColumnMismatch" classname="Validator.ReportsSchemaColumnMismatch" time="0.0394935" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.ReportsSchemaColumnMismatch
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.ReportsSchemaColumnMismatch
+[       OK ] Validator.ReportsSchemaColumnMismatch (0 ms)
+[----------] 1 test from Validator (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.RejectsNumericOverflowAndNonFiniteValues" classname="Validator.RejectsNumericOverflowAndNonFiniteValues" time="0.0393648" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.RejectsNumericOverflowAndNonFiniteValues
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.RejectsNumericOverflowAndNonFiniteValues
+[       OK ] Validator.RejectsNumericOverflowAndNonFiniteValues (0 ms)
+[----------] 1 test from Validator (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.NumericRangeIncludesExactBoundaries" classname="Validator.NumericRangeIncludesExactBoundaries" time="0.0394715" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.NumericRangeIncludesExactBoundaries
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.NumericRangeIncludesExactBoundaries
+[       OK ] Validator.NumericRangeIncludesExactBoundaries (0 ms)
+[----------] 1 test from Validator (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.RegexPerformanceWorkload" classname="Validator.RegexPerformanceWorkload" time="2.22579" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.RegexPerformanceWorkload
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.RegexPerformanceWorkload
+RegexPerformanceWorkload: 50000 validations in 2185.83 ms
+[       OK ] Validator.RegexPerformanceWorkload (2186 ms)
+[----------] 1 test from Validator (2186 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (2186 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Validator.ReportsInvalidRegexConfiguration" classname="Validator.ReportsInvalidRegexConfiguration" time="0.0475408" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Validator.ReportsInvalidRegexConfiguration
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Validator
+[ RUN      ] Validator.ReportsInvalidRegexConfiguration
+[       OK ] Validator.ReportsInvalidRegexConfiguration (0 ms)
+[----------] 1 test from Validator (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.SyncSmallClean" classname="Pipeline.SyncSmallClean" time="0.0406469" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.SyncSmallClean
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.SyncSmallClean
+Pipeline.SyncSmallClean: imported 10 rows in 1.0703 ms
+[       OK ] Pipeline.SyncSmallClean (1 ms)
+[----------] 1 test from Pipeline (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (2 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.MissingFile" classname="Pipeline.MissingFile" time="0.0408771" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.MissingFile
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.MissingFile
+Pipeline.MissingFile: errors=1
+[       OK ] Pipeline.MissingFile (0 ms)
+[----------] 1 test from Pipeline (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.SkipBadRows" classname="Pipeline.SkipBadRows" time="0.0417013" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.SkipBadRows
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.SkipBadRows
+[       OK ] Pipeline.SkipBadRows (1 ms)
+[----------] 1 test from Pipeline (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.ErrorLimit" classname="Pipeline.ErrorLimit" time="0.0423337" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.ErrorLimit
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.ErrorLimit
+[       OK ] Pipeline.ErrorLimit (1 ms)
+[----------] 1 test from Pipeline (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.CompleteErrorLogIgnoresMemorySampleLimit" classname="Pipeline.CompleteErrorLogIgnoresMemorySampleLimit" time="0.66305" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.CompleteErrorLogIgnoresMemorySampleLimit
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.CompleteErrorLogIgnoresMemorySampleLimit
+[       OK ] Pipeline.CompleteErrorLogIgnoresMemorySampleLimit (621 ms)
+[----------] 1 test from Pipeline (622 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (622 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.ErrorLogPreservesArbitraryRawBytes" classname="Pipeline.ErrorLogPreservesArbitraryRawBytes" time="0.0466312" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.ErrorLogPreservesArbitraryRawBytes
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.ErrorLogPreservesArbitraryRawBytes
+[       OK ] Pipeline.ErrorLogPreservesArbitraryRawBytes (4 ms)
+[----------] 1 test from Pipeline (4 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (5 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.ErrorLogOpenFailureIsReported" classname="Pipeline.ErrorLogOpenFailureIsReported" time="0.0411643" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.ErrorLogOpenFailureIsReported
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.ErrorLogOpenFailureIsReported
+[       OK ] Pipeline.ErrorLogOpenFailureIsReported (0 ms)
+[----------] 1 test from Pipeline (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.NoHeaderUsesRuleCount" classname="Pipeline.NoHeaderUsesRuleCount" time="0.0449022" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.NoHeaderUsesRuleCount
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.NoHeaderUsesRuleCount
+[       OK ] Pipeline.NoHeaderUsesRuleCount (2 ms)
+[----------] 1 test from Pipeline (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (3 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.ParseErrorDoesNotBecomeEof" classname="Pipeline.ParseErrorDoesNotBecomeEof" time="0.0438168" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.ParseErrorDoesNotBecomeEof
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.ParseErrorDoesNotBecomeEof
+[       OK ] Pipeline.ParseErrorDoesNotBecomeEof (3 ms)
+[----------] 1 test from Pipeline (3 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (4 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.ErrorPreservesRawCsvLine" classname="Pipeline.ErrorPreservesRawCsvLine" time="0.0418016" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.ErrorPreservesRawCsvLine
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.ErrorPreservesRawCsvLine
+[       OK ] Pipeline.ErrorPreservesRawCsvLine (2 ms)
+[----------] 1 test from Pipeline (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (3 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.RejectsHeaderRuleCountMismatch" classname="Pipeline.RejectsHeaderRuleCountMismatch" time="0.0416855" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.RejectsHeaderRuleCountMismatch
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.RejectsHeaderRuleCountMismatch
+[       OK ] Pipeline.RejectsHeaderRuleCountMismatch (1 ms)
+[----------] 1 test from Pipeline (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (2 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.InvalidRegexErrorIsTraceable" classname="Pipeline.InvalidRegexErrorIsTraceable" time="0.0440632" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.InvalidRegexErrorIsTraceable
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.InvalidRegexErrorIsTraceable
+[       OK ] Pipeline.InvalidRegexErrorIsTraceable (2 ms)
+[----------] 1 test from Pipeline (3 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (3 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.StreamingImportMatchesSyncImport" classname="Pipeline.StreamingImportMatchesSyncImport" time="0.0596192" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.StreamingImportMatchesSyncImport
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.StreamingImportMatchesSyncImport
+[       OK ] Pipeline.StreamingImportMatchesSyncImport (7 ms)
+[----------] 1 test from Pipeline (8 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (8 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Pipeline.StreamingMissingFile" classname="Pipeline.StreamingMissingFile" time="0.0496526" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Pipeline.StreamingMissingFile
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Pipeline
+[ RUN      ] Pipeline.StreamingMissingFile
+[       OK ] Pipeline.StreamingMissingFile (1 ms)
+[----------] 1 test from Pipeline (2 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (2 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.ImportAndStats" classname="Concurrent.ImportAndStats" time="1.3467" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.ImportAndStats
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.ImportAndStats
+Concurrent.ImportAndStats: imported=75460
+[       OK ] Concurrent.ImportAndStats (1309 ms)
+[----------] 1 test from Concurrent (1309 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1309 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.StatsThreadSafety" classname="Concurrent.StatsThreadSafety" time="0.051043" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.StatsThreadSafety
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.StatsThreadSafety
+Concurrent.StatsThreadSafety: 4000 reads completed.
+[       OK ] Concurrent.StatsThreadSafety (1 ms)
+[----------] 1 test from Concurrent (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (2 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.StatsAtomicRead" classname="Concurrent.StatsAtomicRead" time="0.0401673" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.StatsAtomicRead
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.StatsAtomicRead
+Concurrent.StatsAtomicRead: stats() ok, total_lines=0
+[       OK ] Concurrent.StatsAtomicRead (0 ms)
+[----------] 1 test from Concurrent (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.PendingCountInitiallyZero" classname="Concurrent.PendingCountInitiallyZero" time="0.0406042" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.PendingCountInitiallyZero
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.PendingCountInitiallyZero
+[       OK ] Concurrent.PendingCountInitiallyZero (0 ms)
+[----------] 1 test from Concurrent (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.ShutdownWhenIdle" classname="Concurrent.ShutdownWhenIdle" time="0.0380116" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.ShutdownWhenIdle
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.ShutdownWhenIdle
+[       OK ] Concurrent.ShutdownWhenIdle (0 ms)
+[----------] 1 test from Concurrent (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.StreamingProgressEveryThousand" classname="Concurrent.StreamingProgressEveryThousand" time="1.70733" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.StreamingProgressEveryThousand
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.StreamingProgressEveryThousand
+[       OK ] Concurrent.StreamingProgressEveryThousand (1669 ms)
+[----------] 1 test from Concurrent (1669 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1669 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.StreamingProgressCanCancel" classname="Concurrent.StreamingProgressCanCancel" time="0.0845944" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.StreamingProgressCanCancel
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.StreamingProgressCanCancel
+[       OK ] Concurrent.StreamingProgressCanCancel (36 ms)
+[----------] 1 test from Concurrent (36 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (36 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.SyncImportStatsMatchResult" classname="Concurrent.SyncImportStatsMatchResult" time="0.0419046" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.SyncImportStatsMatchResult
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.SyncImportStatsMatchResult
+[       OK ] Concurrent.SyncImportStatsMatchResult (1 ms)
+[----------] 1 test from Concurrent (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.ReadsStatsDuringSyncImport" classname="Concurrent.ReadsStatsDuringSyncImport" time="1.83548" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.ReadsStatsDuringSyncImport
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.ReadsStatsDuringSyncImport
+[       OK ] Concurrent.ReadsStatsDuringSyncImport (1793 ms)
+[----------] 1 test from Concurrent (1794 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1794 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.StatsDuringStreamingImport" classname="Concurrent.StatsDuringStreamingImport" time="1.76956" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.StatsDuringStreamingImport
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.StatsDuringStreamingImport
+[       OK ] Concurrent.StatsDuringStreamingImport (1723 ms)
+[----------] 1 test from Concurrent (1723 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1723 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.StreamingCallbackThrows" classname="Concurrent.StreamingCallbackThrows" time="0.0633713" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.StreamingCallbackThrows
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.StreamingCallbackThrows
+[       OK ] Concurrent.StreamingCallbackThrows (20 ms)
+[----------] 1 test from Concurrent (20 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (20 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.StrictModeBadRowMatchesSyncImport" classname="Concurrent.StrictModeBadRowMatchesSyncImport" time="0.0448364" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.StrictModeBadRowMatchesSyncImport
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.StrictModeBadRowMatchesSyncImport
+[       OK ] Concurrent.StrictModeBadRowMatchesSyncImport (4 ms)
+[----------] 1 test from Concurrent (5 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (5 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.RejectsSyncImportWhileStreaming" classname="Concurrent.RejectsSyncImportWhileStreaming" time="0.0588269" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.RejectsSyncImportWhileStreaming
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.RejectsSyncImportWhileStreaming
+[       OK ] Concurrent.RejectsSyncImportWhileStreaming (19 ms)
+[----------] 1 test from Concurrent (19 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (19 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.ShutdownNoDeadlock" classname="Concurrent.ShutdownNoDeadlock" time="0.133725" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.ShutdownNoDeadlock
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.ShutdownNoDeadlock
+[       OK ] Concurrent.ShutdownNoDeadlock (92 ms)
+[----------] 1 test from Concurrent (92 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (93 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.CompletedWorkerCanRestart" classname="Concurrent.CompletedWorkerCanRestart" time="0.0429211" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.CompletedWorkerCanRestart
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.CompletedWorkerCanRestart
+[       OK ] Concurrent.CompletedWorkerCanRestart (3 ms)
+[----------] 1 test from Concurrent (3 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (3 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.RejectsSecondStreamingImport" classname="Concurrent.RejectsSecondStreamingImport" time="0.0586771" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.RejectsSecondStreamingImport
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.RejectsSecondStreamingImport
+[       OK ] Concurrent.RejectsSecondStreamingImport (19 ms)
+[----------] 1 test from Concurrent (19 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (20 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.CallbackCanRequestShutdown" classname="Concurrent.CallbackCanRequestShutdown" time="0.0600084" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.CallbackCanRequestShutdown
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.CallbackCanRequestShutdown
+[       OK ] Concurrent.CallbackCanRequestShutdown (19 ms)
+[----------] 1 test from Concurrent (19 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (20 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.DestructorJoinsActiveWorker" classname="Concurrent.DestructorJoinsActiveWorker" time="0.12397" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.DestructorJoinsActiveWorker
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.DestructorJoinsActiveWorker
+[       OK ] Concurrent.DestructorJoinsActiveWorker (83 ms)
+[----------] 1 test from Concurrent (83 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (83 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+	<testcase name="Concurrent.RestartsAfterCallbackFailure" classname="Concurrent.RestartsAfterCallbackFailure" time="0.0605454" status="run">
+		<properties/>
+		<system-out>Running main() from D:\c++development\week01\csv-import-pipeline\csv-import-pipeline\third_party\googletest\googletest\src\gtest_main.cc
+Note: Google Test filter = Concurrent.RestartsAfterCallbackFailure
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from Concurrent
+[ RUN      ] Concurrent.RestartsAfterCallbackFailure
+[       OK ] Concurrent.RestartsAfterCallbackFailure (20 ms)
+[----------] 1 test from Concurrent (20 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (20 ms total)
+[  PASSED  ] 1 test.
+</system-out>
+	</testcase>
+</testsuite>

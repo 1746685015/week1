@@ -341,3 +341,28 @@ P1 单独收益约 1.6%，P2 相对 P0 的总耗时下降约 7.8%；P3 相对 P0
 提交信息：`test: verify 1GB import memory and integrity`。
 
 标签：`part-c-c7-1gb-acceptance`。
+
+## C8：报告、附件与最终复核
+
+### 交付材料更新
+
+- `docs/REPORT_TEMPLATE.md` 已填写 Part A A1～A8、Part B 线程/停止设计以及 Part C 编译、性能、内存和完整性结论；其余 Part A 扩展修复通过证据文件索引。
+- README 与 `data/ReadMe.md` 已从最初的缺陷演示说明更新为当前实现，不再把已修复行为、64 KiB 旧输入配置或 “Part E” 当作现状。
+- 添加 Release、Debug、MSVC ASan 的 XML 测试附件、工具验收摘要和 Git 历史快照；原始 C5/C6 实验报告及 C7 三轮正式报告继续保留。
+- 全项目 clang-tidy 首轮在 `csvp_large_verify` 发现位运算类型和顶层异常边界两项告警。修复为显式无符号提升和捕获所有顶层异常；对分析器无法跨边界证明的 `main` 增加带英文原因的局部 `NOLINT`。修复后专项可见告警/错误 0，1 GB 验收工具再次输出 `LARGE_IMPORT_INTEGRITY_PASS`，sidecar 仍为 10,000 条、mismatch=0、SHA 不变。
+
+### 最终工具验收
+
+- Release ctest：65/65 通过，失败 0；`docs/evidence/final_ctest_release.xml`。
+- Debug ctest：65/65 通过，失败 0；`docs/evidence/final_ctest_debug.xml`。
+- MSVC AddressSanitizer Debug：65/65 通过，AddressSanitizer 错误 0；`docs/evidence/final_asan_tests.xml`。链接器关于 ASan 元数据禁用增量链接的 LNK4300 是构建模式提示，不是代码告警。
+- Release `--gtest_repeat=100 --gtest_shuffle`：100/100 轮通过，共 6,500 项测试，失败 0。
+- clang-tidy：对 4 个生产源文件和 3 个 benchmark/验收源文件启用 `clang-analyzer-*`、`bugprone-*`；修复后项目代码可见告警/错误 0。
+- `csvp_large_verify` 在 Release 和 Debug 的无参数 usage 路径均返回约定退出码 2；修复后 Release 全量 1 GB 验收退出码 0。
+- 详细最终命令、结果和例外说明见 `docs/evidence/final_tool_verification.md`。
+
+### Git 证据
+
+提交信息：`docs: record Part C verification evidence`。
+
+标签：`part-c-acceptance`。

@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -53,8 +54,9 @@ std::string HexEncode(const std::string &value)
 	encoded.reserve(value.size() * 2U);
 	for (const unsigned char character : value)
 	{
-		encoded.push_back(HEX_DIGITS[(character >> 4U) & 0x0FU]);
-		encoded.push_back(HEX_DIGITS[character & 0x0FU]);
+		const unsigned int byte = static_cast<unsigned int>(character);
+		encoded.push_back(HEX_DIGITS[(byte >> 4U) & 0x0FU]);
+		encoded.push_back(HEX_DIGITS[byte & 0x0FU]);
 	}
 	return encoded;
 }
@@ -106,9 +108,7 @@ bool CheckLogRecord(const std::string &record, std::uint64_t expectedId)
 	return true;
 }
 
-} // namespace
-
-int main(int argumentCount, char *arguments[])
+int RunVerification(int argumentCount, char *arguments[])
 {
 	if (argumentCount != 2 && argumentCount != 3)
 	{
@@ -230,4 +230,24 @@ int main(int argumentCount, char *arguments[])
 		<< " error_log_complete=" << (result.error_log_complete ? "true" : "false") << '\n';
 	std::cout << (passed ? "LARGE_IMPORT_INTEGRITY_PASS" : "LARGE_IMPORT_INTEGRITY_FAIL") << '\n';
 	return passed ? 0 : 1;
+}
+
+} // namespace
+
+// All verification exceptions are converted to a nonzero process exit code below.
+int main(int argumentCount, char *arguments[]) // NOLINT(bugprone-exception-escape)
+{
+	try
+	{
+		return RunVerification(argumentCount, arguments);
+	}
+	catch (const std::exception &error)
+	{
+		std::cerr << "Large-import verification failed with exception: " << error.what() << '\n';
+	}
+	catch (...)
+	{
+		std::cerr << "Large-import verification failed with an unknown exception\n";
+	}
+	return 1;
 }
