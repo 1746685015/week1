@@ -84,7 +84,10 @@ endif()
 
 # -------------------- benchmark --------------------
 if(BUILD_BENCH)
-    add_executable(csvp_bench bench/bench_import.cpp)
+    add_executable(csvp_bench
+        bench/bench_import.cpp
+        bench/process_memory.cpp
+    )
     target_link_libraries(csvp_bench PRIVATE csvp)
 
     add_executable(csvp_large_verify bench/verify_large_import.cpp)
@@ -103,6 +106,7 @@ if(BUILD_BENCH)
     # 不要在这里显式加 /O2，否则与 Debug 默认的 /RTC1 冲突：
     #   "error D8016: /O2 和 /RTC1 命令行选项不兼容"
     if(MSVC)
+        target_link_libraries(csvp_bench PRIVATE Psapi)
         target_compile_options(csvp_bench PRIVATE /utf-8 /permissive- /EHsc /W4)
         target_compile_options(csvp_large_verify PRIVATE /utf-8 /permissive- /EHsc /W4)
     else()

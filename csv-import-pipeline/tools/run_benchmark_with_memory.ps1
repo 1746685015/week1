@@ -8,6 +8,7 @@ param(
 	[Parameter(Mandatory = $true)]
 	[string]$ReportPath,
 
+	[string]$ErrorLogPath = '',
 	[int]$RepeatCount = 1,
 	[int]$PollMilliseconds = 50
 )
@@ -17,6 +18,12 @@ $resolvedExecutable = (Resolve-Path -LiteralPath $Executable).Path
 $resolvedCsvPath = (Resolve-Path -LiteralPath $CsvPath).Path
 $resolvedReportPath = [System.IO.Path]::GetFullPath($ReportPath)
 $processArguments = @($resolvedCsvPath, $RepeatCount.ToString(), $resolvedReportPath)
+$resolvedErrorLogPath = $null
+if ($ErrorLogPath -ne '')
+{
+	$resolvedErrorLogPath = [System.IO.Path]::GetFullPath($ErrorLogPath)
+	$processArguments += $resolvedErrorLogPath
+}
 
 $startedAt = [System.Diagnostics.Stopwatch]::StartNew()
 $process = Start-Process -FilePath $resolvedExecutable `
@@ -43,6 +50,7 @@ $exitCode = $process.ExitCode
 	executable = $resolvedExecutable
 	csv_path = $resolvedCsvPath
 	report_path = $resolvedReportPath
+	error_log_path = $resolvedErrorLogPath
 	repeat_count = $RepeatCount
 	poll_milliseconds = $PollMilliseconds
 	exit_code = $exitCode

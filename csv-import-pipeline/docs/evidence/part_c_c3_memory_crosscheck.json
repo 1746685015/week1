@@ -1,0 +1,23 @@
+{
+  "configuration": "MSVC 2022 x64 Release",
+  "measurement_scope": "full 1 GB import including 10000-record JSONL error sidecar",
+  "pipeline_elapsed_milliseconds": 23286.8,
+  "in_process_get_process_memory_info": {
+    "peak_working_set_bytes": 4980736,
+    "peak_working_set_mb": 4.980736,
+    "peak_working_set_mib": 4.75,
+    "working_set_bytes_after_import": 4980736,
+    "private_usage_bytes_after_import": 913408
+  },
+  "external_50ms_polling": {
+    "wall_clock_milliseconds": 23609.15,
+    "peak_working_set_bytes": 4972544,
+    "peak_working_set_mb": 4.973,
+    "peak_working_set_mib": 4.742,
+    "peak_private_bytes": 913408
+  },
+  "limit_bytes": 50000000,
+  "passed_50_mb_limit": true,
+  "error_log_records": 10000,
+  "error_log_sha256": "C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C"
+}

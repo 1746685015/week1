@@ -145,3 +145,44 @@ Release/Debug 全量回归均为 64/64 通过；C2 三项定向测试 3/3 通过
 提交信息：`feat: persist complete large-import error details`。
 
 标签：`part-c-c2-error-sidecar`。
+
+## C3：进程内峰值内存实测
+
+### 实现
+
+- 新增 Windows benchmark 辅助模块 `process_memory.cpp/.h`，调用 `GetProcessMemoryInfo()` 并读取 `PROCESS_MEMORY_COUNTERS_EX`。
+- 每轮在完整 import 返回后读取 `PeakWorkingSetSize`、`WorkingSetSize` 与 `PrivateUsage`。`PeakWorkingSetSize` 是进程生命周期峰值，覆盖 CSV 输入、校验、内存错误样本、JSONL 写入和 flush/close。
+- 报告同时给出 bytes、十进制 MB 与二进制 MiB；50 MB 判定使用严格的 `50,000,000 bytes`。
+- Windows API 规定参数类型为基类布局指针而扩展结构由 `cb` 指定，因此此平台边界保留一个有注释的 `reinterpret_cast`；没有在通用业务代码引入该转换。
+- `run_benchmark_with_memory.ps1` 增加可选 error-log 参数，用 50 ms 外部轮询对进程内值交叉核验。
+
+### 指定 1 GB 文件实测
+
+命令：
+
+```powershell
+tools/run_benchmark_with_memory.ps1 `
+  -Executable build-review-baseline/Release/csvp_bench.exe `
+  -CsvPath data/sample_1gb.csv `
+  -ReportPath docs/evidence/part_c_c3_1gb_memory_report.txt `
+  -ErrorLogPath docs/evidence/part_c_c2_errors.jsonl `
+  -RepeatCount 1 -PollMilliseconds 50
+```
+
+结果：程序退出码 0；pipeline 耗时 23,286.8 ms；完整 sidecar 仍为 10,000 条且 SHA-256 未变。进程内峰值工作集为 `4,980,736 bytes`（4.980736 MB / 4.750 MiB），结束时工作集 4,980,736 bytes、PrivateUsage 913,408 bytes。外部轮询测得峰值工作集 4,972,544 bytes（4.973 MB / 4.742 MiB）和峰值私有字节 913,408，和进程内证据一致；采用较高的进程内值判定，仅占 50 MB 限制的 9.96%，余量约 45.019 MB。
+
+本次报告仍保留 C0 的旧吞吐口径（只算 imported）以隔离 C3 的主要变量；报告显示 428,998 rows/s，按全部 10,000,000 条复算为 429,427.830 rows/s、43.110 MB/s。C4 将修正工具本身的口径和标签。
+
+原始报告：`docs/evidence/part_c_c3_1gb_memory_report.txt`；交叉核验摘要：`docs/evidence/part_c_c3_memory_crosscheck.json`。
+
+### 验证
+
+- Release 构建退出码 0，MSVC `/W4` C++ 编译警告 0。
+- `bench_import.cpp` clang-tidy 退出码 0、可见告警/错误 0；标准 openmode 位掩码与 `main` 入口各有一个带英文原因的精确 `NOLINT`。
+- 内存测量失败时 `available=false` 且数值为 0，不会把不可用数据伪装成达标；正式 Windows 运行已返回有效非零数据。
+
+### Git 证据
+
+提交信息：`test: measure peak memory for large import`。
+
+标签：`part-c-c3-memory-measurement`。
