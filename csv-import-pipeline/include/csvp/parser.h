@@ -1,13 +1,13 @@
 #ifndef CSVP_PARSER_H_
 #define CSVP_PARSER_H_
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
 
+#include "csvp/io_config.h"
 #include "csvp/row.h"
 
 namespace csvp {
@@ -56,7 +56,6 @@ public:
 	}
 
 private:
-	static constexpr std::size_t READ_BUFFER_SIZE = static_cast<std::size_t>(64U) * 1024U;
 	static constexpr std::size_t MAX_LINE_SIZE = static_cast<std::size_t>(16U) * 1024U * 1024U;
 
 	bool readLineFromFile();
@@ -71,7 +70,7 @@ private:
 	Config m_config;
 	std::string m_lastError;
 	FILE *m_file = nullptr;
-	std::array<char, READ_BUFFER_SIZE> m_readBuffer{};
+	std::vector<char> m_readBuffer = std::vector<char>(INPUT_BUFFER_SIZE);
 	std::size_t m_readPosition = 0;
 	std::size_t m_readSize = 0;
 	std::string m_lineBuffer;

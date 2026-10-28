@@ -1,0 +1,60 @@
+{
+  "dataset": "data/sample_100k.csv",
+  "input_bytes": 3146588,
+  "repeat_count": 5,
+  "complete_error_sidecar_enabled": true,
+  "input_buffer_experiments": [
+    {
+      "input_buffer_bytes": 65536,
+      "error_log_buffer_bytes": 65536,
+      "average_elapsed_ms": 114.355,
+      "average_rows_per_second": 874469.088,
+      "average_input_mb_per_second": 27.516,
+      "peak_working_set_bytes": 5758976
+    },
+    {
+      "input_buffer_bytes": 262144,
+      "error_log_buffer_bytes": 65536,
+      "average_elapsed_ms": 110.340,
+      "average_rows_per_second": 906285.872,
+      "average_input_mb_per_second": 28.517,
+      "peak_working_set_bytes": 5505024
+    },
+    {
+      "input_buffer_bytes": 1048576,
+      "error_log_buffer_bytes": 65536,
+      "average_elapsed_ms": 113.467,
+      "average_rows_per_second": 881313.665,
+      "average_input_mb_per_second": 27.731,
+      "peak_working_set_bytes": 6287360
+    }
+  ],
+  "error_log_buffer_experiments": [
+    {
+      "input_buffer_bytes": 262144,
+      "error_log_buffer_bytes": 65536,
+      "average_elapsed_ms": 110.340,
+      "average_rows_per_second": 906285.872,
+      "average_input_mb_per_second": 28.517,
+      "peak_working_set_bytes": 5505024
+    },
+    {
+      "input_buffer_bytes": 262144,
+      "error_log_buffer_bytes": 262144,
+      "average_elapsed_ms": 110.827,
+      "average_rows_per_second": 902305.408,
+      "average_input_mb_per_second": 28.392,
+      "peak_working_set_bytes": 5701632
+    },
+    {
+      "input_buffer_bytes": 262144,
+      "error_log_buffer_bytes": 1048576,
+      "average_elapsed_ms": 111.636,
+      "average_rows_per_second": 895768.230,
+      "average_input_mb_per_second": 28.186,
+      "peak_working_set_bytes": 6488064
+    }
+  ],
+  "selected_input_buffer_bytes": 262144,
+  "selected_error_log_buffer_bytes": 65536
+}

@@ -1,11 +1,12 @@
 #ifndef CSVP_ERROR_SINK_H_
 #define CSVP_ERROR_SINK_H_
 
-#include <array>
 #include <cstddef>
 #include <fstream>
 #include <string>
+#include <vector>
 
+#include "csvp/io_config.h"
 #include "csvp/types.h"
 
 namespace csvp {
@@ -24,9 +25,7 @@ public:
 	bool close(std::string &errorMessage);
 
 private:
-	static constexpr std::size_t WRITE_BUFFER_SIZE = static_cast<std::size_t>(64U) * 1024U;
-
-	std::array<char, WRITE_BUFFER_SIZE> m_writeBuffer{};
+	std::vector<char> m_writeBuffer = std::vector<char>(ERROR_LOG_BUFFER_SIZE);
 	std::ofstream m_output;
 	bool m_failed = false;
 };

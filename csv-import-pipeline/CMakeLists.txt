@@ -9,6 +9,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(ENABLE_ASAN "Build with AddressSanitizer (MSVC x64 only)" OFF)
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_BENCH "Build benchmarks" ON)
+set(CSVP_INPUT_BUFFER_KIB "256" CACHE STRING "Sequential CSV input buffer size in KiB")
+set(CSVP_ERROR_LOG_BUFFER_KIB "64" CACHE STRING "Sequential error-log buffer size in KiB")
+set_property(CACHE CSVP_INPUT_BUFFER_KIB PROPERTY STRINGS 64 256 1024)
+set_property(CACHE CSVP_ERROR_LOG_BUFFER_KIB PROPERTY STRINGS 64 256 1024)
+
+foreach(CSVP_BUFFER_VARIABLE CSVP_INPUT_BUFFER_KIB CSVP_ERROR_LOG_BUFFER_KIB)
+    if(NOT "${${CSVP_BUFFER_VARIABLE}}" MATCHES "^[1-9][0-9]*$")
+        message(FATAL_ERROR "${CSVP_BUFFER_VARIABLE} must be a positive integer")
+    endif()
+    if(${${CSVP_BUFFER_VARIABLE}} GREATER 16384)
+        message(FATAL_ERROR "${CSVP_BUFFER_VARIABLE} must not exceed 16384 KiB")
+    endif()
+endforeach()
+
+math(EXPR CSVP_INPUT_BUFFER_BYTES "${CSVP_INPUT_BUFFER_KIB} * 1024")
+math(EXPR CSVP_ERROR_LOG_BUFFER_BYTES "${CSVP_ERROR_LOG_BUFFER_KIB} * 1024")
 
 # -------------------- library --------------------
 set(CSVP_SOURCES
@@ -20,6 +36,10 @@ set(CSVP_SOURCES
 
 add_library(csvp STATIC ${CSVP_SOURCES})
 target_include_directories(csvp PUBLIC include)
+target_compile_definitions(csvp PUBLIC
+    CSVP_INPUT_BUFFER_BYTES=${CSVP_INPUT_BUFFER_BYTES}U
+    CSVP_ERROR_LOG_BUFFER_BYTES=${CSVP_ERROR_LOG_BUFFER_BYTES}U
+)
 
 # MSVC-specific settings
 if(MSVC)

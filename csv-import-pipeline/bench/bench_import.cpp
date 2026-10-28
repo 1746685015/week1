@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "csvp/io_config.h"
 #include "csvp/pipeline.h"
 #include "process_memory.h"
 
@@ -119,6 +120,8 @@ bool WriteReport(const BenchmarkOptions &options, const std::vector<RunSnapshot>
 		<< "File                         : " << options.filepath << '\n'
 		<< "Input bytes                  : "
 		<< (runs.empty() ? 0U : runs.front().inputBytes) << '\n'
+		<< "Input buffer bytes           : " << csvp::INPUT_BUFFER_SIZE << '\n'
+		<< "Error-log buffer bytes       : " << csvp::ERROR_LOG_BUFFER_SIZE << '\n'
 		<< "Repeats                      : " << options.repeat << '\n'
 		<< "Average processed rows       : " << averageProcessedRows << '\n'
 		<< "Average elapsed ms           : " << averageMilliseconds << '\n'

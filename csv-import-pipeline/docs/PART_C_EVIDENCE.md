@@ -263,3 +263,44 @@ P1 单独收益约 1.6%，P2 相对 P0 的总耗时下降约 7.8%；P3 相对 P0
 提交信息：`perf(parser): reuse row field storage`。
 
 标签：`part-c-c5-row-reuse`。
+
+## C6：调优有界输入与错误日志 I/O
+
+### 实验方法
+
+- 新增经过 CMake 校验的 `CSVP_INPUT_BUFFER_KIB` 与 `CSVP_ERROR_LOG_BUFFER_KIB`，只接受不超过 16,384 KiB 的正整数；benchmark 报告会写出实际编译使用的字节数，避免仅凭构建参数猜测。
+- 缓冲区改为固定初始大小的堆存储，防止 1 MiB 对照实验把大数组放入 Windows 线程栈；大小在构造后保持有界。
+- 每组均使用同一 Release 工具、同一 `sample_100k.csv`、完整 sidecar、200 条内存错误样本和 5 轮测试。输入缓冲实验固定日志缓冲 64 KiB；日志缓冲实验固定输入缓冲 256 KiB。
+- 日志仍为单线程顺序写入，不逐条 flush，不引入无界异步队列；结束时继续显式检查 flush 与 close。
+
+### 输入缓冲对照
+
+| 输入缓冲 | 平均耗时 | 平均吞吐 | 平均输入吞吐 | 峰值工作集 |
+|---:|---:|---:|---:|---:|
+| 64 KiB | 114.355 ms | 874,469.088 rows/s | 27.516 MB/s | 5,758,976 bytes |
+| 256 KiB | 110.340 ms | 906,285.872 rows/s | 28.517 MB/s | 5,505,024 bytes |
+| 1 MiB | 113.467 ms | 881,313.665 rows/s | 27.731 MB/s | 6,287,360 bytes |
+
+256 KiB 相对 64 KiB 平均耗时降低约 3.5%、吞吐提高约 3.6%；1 MiB 没有继续提速且峰值更高，因此最终输入缓冲选择 256 KiB。
+
+### 错误日志缓冲对照
+
+| 日志缓冲 | 平均耗时 | 平均吞吐 | 平均输入吞吐 | 峰值工作集 |
+|---:|---:|---:|---:|---:|
+| 64 KiB | 110.340 ms | 906,285.872 rows/s | 28.517 MB/s | 5,505,024 bytes |
+| 256 KiB | 110.827 ms | 902,305.408 rows/s | 28.392 MB/s | 5,701,632 bytes |
+| 1 MiB | 111.636 ms | 895,768.230 rows/s | 28.186 MB/s | 6,488,064 bytes |
+
+增大日志缓冲没有产生收益，1 MiB 还额外增加约 0.98 MB 峰值工作集；最终继续使用 64 KiB。选择结果由实测决定，而不是默认假设缓冲越大越快。
+
+原始报告为 `docs/evidence/part_c_c6_input_64k_100k.txt`、`part_c_c6_input_256k_100k.txt`、`part_c_c6_input_1024k_100k.txt`、`part_c_c6_log_256k_100k.txt`、`part_c_c6_log_1024k_100k.txt`；汇总为 `part_c_c6_benchmark_summary.json`。
+
+### 回归与静态检查
+
+最终配置为输入 256 KiB、日志 64 KiB。Release/Debug 全量回归均为 65/65 通过；MSVC `/W4` 构建无 C++ 警告。`parser.cpp`、`error_sink.cpp`、`bench_import.cpp` 的 clang-tidy 均完成，项目代码可见告警/错误 0，第三方/系统告警被抑制，已有 5 个精确 `NOLINT` 均保留原因和局部范围。
+
+### Git 证据
+
+提交信息：`perf(io): tune bounded input and error-log buffers`。
+
+标签：`part-c-c6-io-tuning`。
