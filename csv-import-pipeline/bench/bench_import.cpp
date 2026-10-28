@@ -1,11 +1,13 @@
 // bench_import.cpp
-// Measures synchronous import throughput and process memory, then writes a text report.
+// Measures complete-row throughput and process memory, then writes an auditable report.
 
 #include <charconv>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <system_error>
@@ -18,14 +20,21 @@
 namespace {
 
 constexpr std::size_t MAX_ERROR_SAMPLES = 200U;
+constexpr double BYTES_PER_MB = 1000000.0;
+constexpr double BYTES_PER_MIB = 1024.0 * 1024.0;
 
 struct RunSnapshot
 {
 	std::size_t rowsImported = 0U;
 	std::size_t rowsSkipped = 0U;
-	std::size_t errorCount = 0U;
-	bool errorLimitHit = false;
+	std::size_t totalErrorCount = 0U;
+	std::size_t memoryErrorSamples = 0U;
+	std::uint64_t inputBytes = 0U;
 	double milliseconds = 0.0;
+	double rowsPerSecond = 0.0;
+	double megabytesPerSecond = 0.0;
+	std::string errorLogPath;
+	bool errorLogComplete = true;
 	csvp_bench::ProcessMemorySnapshot memory;
 	std::vector<csvp::RowError> errors;
 };
@@ -77,45 +86,82 @@ std::vector<csvp::FieldRule> MakeDefaultRules()
 	};
 }
 
-void WriteReport(const std::string &reportPath, const std::string &filepath, int repeat,
-	const std::vector<RunSnapshot> &runs, double averageMilliseconds,
-	std::size_t rowsPerSecond)
+std::string ErrorLogPathForRun(const BenchmarkOptions &options, int run)
+{
+	if (options.errorLogPath.empty() || options.repeat == 1)
+		return options.errorLogPath;
+	return options.errorLogPath + ".run" + std::to_string(run + 1);
+}
+
+bool WriteReport(const BenchmarkOptions &options, const std::vector<RunSnapshot> &runs,
+	double averageMilliseconds, double averageProcessedRows,
+	double averageRowsPerSecond, double averageMegabytesPerSecond)
 {
 	// Standard openmode flags are combined with their required bitmask operator.
-	std::ofstream output(reportPath, std::ios::out | std::ios::trunc); // NOLINT(bugprone-signed-bitwise)
+	std::ofstream output(options.reportPath,
+		std::ios::out | std::ios::trunc); // NOLINT(bugprone-signed-bitwise)
 	if (!output)
 	{
-		std::cerr << "Cannot open report file: " << reportPath << '\n';
-		return;
+		std::cerr << "Cannot open report file: " << options.reportPath << '\n';
+		return false;
 	}
 
-	output << "CSV Import Pipeline Benchmark Report\n"
+	std::uint64_t peakWorkingSetBytes = 0U;
+	for (const RunSnapshot &snapshot : runs)
+	{
+		if (snapshot.memory.peakWorkingSetBytes > peakWorkingSetBytes)
+			peakWorkingSetBytes = snapshot.memory.peakWorkingSetBytes;
+	}
+
+	output << std::fixed << std::setprecision(3)
+		<< "CSV Import Pipeline Benchmark Report\n"
 		<< "====================================\n\n"
-		<< "File            : " << filepath << '\n'
-		<< "Repeats         : " << repeat << '\n'
-		<< "Avg time        : " << averageMilliseconds << " ms\n"
-		<< "Throughput      : " << rowsPerSecond << " rows/sec\n\n"
-		<< "--- Per-run Summary ---\n"
-		<< "run  rows_imported  rows_skipped  errors  error_limit_hit  time_ms  "
-		<< "peak_working_set_bytes  peak_working_set_MB  peak_working_set_MiB  "
-		<< "working_set_bytes  private_usage_bytes\n";
+		<< "File                         : " << options.filepath << '\n'
+		<< "Input bytes                  : "
+		<< (runs.empty() ? 0U : runs.front().inputBytes) << '\n'
+		<< "Repeats                      : " << options.repeat << '\n'
+		<< "Average processed rows       : " << averageProcessedRows << '\n'
+		<< "Average elapsed ms           : " << averageMilliseconds << '\n'
+		<< "Average rows/sec             : " << averageRowsPerSecond << '\n'
+		<< "Average input MB/sec         : " << averageMegabytesPerSecond << '\n'
+		<< "Peak working set bytes       : " << peakWorkingSetBytes << '\n'
+		<< "Peak working set MB          : "
+		<< static_cast<double>(peakWorkingSetBytes) / BYTES_PER_MB << '\n'
+		<< "Peak working set MiB         : "
+		<< static_cast<double>(peakWorkingSetBytes) / BYTES_PER_MIB << "\n\n"
+		<< "--- Per-run Summary ---\n";
+
 	for (std::size_t index = 0U; index < runs.size(); ++index)
 	{
 		const RunSnapshot &snapshot = runs[index];
-		output << (index + 1U) << "    "
-			<< snapshot.rowsImported << "              "
-			<< snapshot.rowsSkipped << "            "
-			<< snapshot.errorCount << "       "
-			<< (snapshot.errorLimitHit ? "yes" : "no") << "              "
-			<< snapshot.milliseconds << "    "
-			<< snapshot.memory.peakWorkingSetBytes << "    "
-			<< static_cast<double>(snapshot.memory.peakWorkingSetBytes) / 1000000.0 << "    "
-			<< static_cast<double>(snapshot.memory.peakWorkingSetBytes) / (1024.0 * 1024.0) << "    "
-			<< snapshot.memory.workingSetBytes << "    "
-			<< snapshot.memory.privateUsageBytes << '\n';
+		const std::size_t processedRows = snapshot.rowsImported + snapshot.rowsSkipped;
+		output << "Run " << (index + 1U) << '\n'
+			<< "  rows_imported              : " << snapshot.rowsImported << '\n'
+			<< "  rows_skipped               : " << snapshot.rowsSkipped << '\n'
+			<< "  processed_rows             : " << processedRows << '\n'
+			<< "  total_error_count          : " << snapshot.totalErrorCount << '\n'
+			<< "  memory_error_samples       : " << snapshot.memoryErrorSamples << '\n'
+			<< "  memory_sample_limit_hit    : "
+			<< (snapshot.totalErrorCount > snapshot.memoryErrorSamples ? "yes" : "no") << '\n'
+			<< "  input_bytes                : " << snapshot.inputBytes << '\n'
+			<< "  elapsed_ms                 : " << snapshot.milliseconds << '\n'
+			<< "  rows_per_second            : " << snapshot.rowsPerSecond << '\n'
+			<< "  input_MB_per_second        : " << snapshot.megabytesPerSecond << '\n'
+			<< "  memory_measurement         : "
+			<< (snapshot.memory.available ? "available" : "unavailable") << '\n'
+			<< "  peak_working_set_bytes     : " << snapshot.memory.peakWorkingSetBytes << '\n'
+			<< "  peak_working_set_MB        : "
+			<< static_cast<double>(snapshot.memory.peakWorkingSetBytes) / BYTES_PER_MB << '\n'
+			<< "  peak_working_set_MiB       : "
+			<< static_cast<double>(snapshot.memory.peakWorkingSetBytes) / BYTES_PER_MIB << '\n'
+			<< "  working_set_bytes          : " << snapshot.memory.workingSetBytes << '\n'
+			<< "  private_usage_bytes        : " << snapshot.memory.privateUsageBytes << '\n'
+			<< "  error_log_path             : " << snapshot.errorLogPath << '\n'
+			<< "  error_log_complete         : "
+			<< (snapshot.errorLogComplete ? "true" : "false") << "\n\n";
 	}
 
-	output << "\n--- Error Rows (sample) ---\n";
+	output << "--- Error Rows (in-memory sample from final run) ---\n";
 	if (runs.empty() || runs.back().errors.empty())
 		output << "(no error rows collected in this run)\n";
 	else
@@ -133,9 +179,13 @@ void WriteReport(const std::string &reportPath, const std::string &filepath, int
 		}
 	}
 
-	output << "\n--- Note ---\n"
-		<< "Peak working set is read in-process with GetProcessMemoryInfo on Windows.\n"
-		<< "The throughput formula is retained from the C0 baseline and is corrected in C4.\n";
+	output.flush();
+	if (!output.good())
+	{
+		std::cerr << "Failed while writing report file: " << options.reportPath << '\n';
+		return false;
+	}
+	return true;
 }
 
 bool ParseRepeatCount(const char *text, int &repeat)
@@ -155,26 +205,43 @@ bool ParseRepeatCount(const char *text, int &repeat)
 
 int RunBench(const BenchmarkOptions &options)
 {
-	csvp::ImportPipeline::Config config;
-	config.parser.delimiter = ',';
-	config.parser.has_header = true;
-	config.skip_bad_rows = true;
-	if (!options.errorLogPath.empty())
+	// Standard openmode flags are combined with their required bitmask operator.
+	std::ifstream sizeInput(options.filepath,
+		std::ios::binary | std::ios::ate); // NOLINT(bugprone-signed-bitwise)
+	if (!sizeInput.is_open())
 	{
-		config.error_limit = MAX_ERROR_SAMPLES;
-		config.error_log_path = options.errorLogPath;
+		std::cerr << "Cannot open input file for size measurement\n";
+		return 1;
 	}
+	const std::streampos inputEnd = sizeInput.tellg();
+	if (inputEnd < std::streampos(0))
+	{
+		std::cerr << "Cannot read input file size\n";
+		return 1;
+	}
+	const std::uint64_t inputBytes =
+		static_cast<std::uint64_t>(static_cast<std::streamoff>(inputEnd));
+	sizeInput.close();
 
 	double totalMilliseconds = 0.0;
-	std::size_t totalRows = 0U;
+	double totalProcessedRows = 0.0;
 	std::vector<RunSnapshot> runs;
 	runs.reserve(static_cast<std::size_t>(options.repeat));
 
 	for (int run = 0; run < options.repeat; ++run)
 	{
+		csvp::ImportPipeline::Config config;
+		config.parser.delimiter = ',';
+		config.parser.has_header = true;
+		config.skip_bad_rows = true;
+		config.error_log_path = ErrorLogPathForRun(options, run);
+		if (!config.error_log_path.empty())
+			config.error_limit = MAX_ERROR_SAMPLES;
+
 		csvp::ImportPipeline pipeline(config, MakeDefaultRules());
 		const auto startTime = std::chrono::steady_clock::now();
-		const csvp::ImportPipeline::Result result = pipeline.importSync(options.filepath.c_str());
+		const csvp::ImportPipeline::Result result =
+			pipeline.importSync(options.filepath.c_str());
 		const auto finishTime = std::chrono::steady_clock::now();
 		const double milliseconds =
 			std::chrono::duration<double, std::milli>(finishTime - startTime).count();
@@ -183,43 +250,60 @@ int RunBench(const BenchmarkOptions &options)
 			std::cerr << "Import did not complete: " << result.failure_message << '\n';
 			return 1;
 		}
-		if (!options.errorLogPath.empty() && !result.error_log_complete)
+		if (!config.error_log_path.empty() && !result.error_log_complete)
 		{
 			std::cerr << "Error log did not complete: " << result.failure_message << '\n';
 			return 1;
 		}
 
-		totalMilliseconds += milliseconds;
-		totalRows += result.rows_imported;
+		const std::size_t processedRows = result.rows_imported + result.rows_skipped;
+		const double elapsedSeconds = milliseconds / 1000.0;
 		RunSnapshot snapshot;
 		snapshot.rowsImported = result.rows_imported;
 		snapshot.rowsSkipped = result.rows_skipped;
-		snapshot.errorCount = result.errors.size();
-		snapshot.errorLimitHit =
-			config.error_limit > 0U && result.errors.size() >= config.error_limit;
+		snapshot.totalErrorCount = result.total_error_count;
+		snapshot.memoryErrorSamples = result.errors.size();
+		snapshot.inputBytes = inputBytes;
 		snapshot.milliseconds = milliseconds;
-		snapshot.memory = csvp_bench::ReadProcessMemory();
-		const std::size_t sampleCount = result.errors.size() < MAX_ERROR_SAMPLES
+		snapshot.rowsPerSecond = static_cast<double>(processedRows) / elapsedSeconds;
+		snapshot.megabytesPerSecond =
+			static_cast<double>(inputBytes) / BYTES_PER_MB / elapsedSeconds;
+		snapshot.errorLogPath = result.error_log_path;
+		snapshot.errorLogComplete = result.error_log_complete;
+		const std::size_t reportSampleCount = result.errors.size() < MAX_ERROR_SAMPLES
 			? result.errors.size()
 			: MAX_ERROR_SAMPLES;
-		for (std::size_t index = 0U; index < sampleCount; ++index)
+		snapshot.errors.reserve(reportSampleCount);
+		for (std::size_t index = 0U; index < reportSampleCount; ++index)
 			snapshot.errors.push_back(result.errors[index]);
+		snapshot.memory = csvp_bench::ReadProcessMemory();
 		runs.push_back(std::move(snapshot));
 
+		totalMilliseconds += milliseconds;
+		totalProcessedRows += static_cast<double>(processedRows);
 		const RunSnapshot &saved = runs.back();
-		std::cout << "Run " << (run + 1) << ": imported=" << result.rows_imported
-			<< " skipped=" << result.rows_skipped
-			<< " elapsed_ms=" << milliseconds
+		std::cout << "Run " << (run + 1)
+			<< ": imported=" << saved.rowsImported
+			<< " skipped=" << saved.rowsSkipped
+			<< " total_errors=" << saved.totalErrorCount
+			<< " memory_error_samples=" << saved.memoryErrorSamples
+			<< " elapsed_ms=" << saved.milliseconds
+			<< " rows_per_second=" << saved.rowsPerSecond
+			<< " input_MB_per_second=" << saved.megabytesPerSecond
 			<< " peak_working_set_bytes=" << saved.memory.peakWorkingSetBytes << '\n';
 	}
 
 	const double averageMilliseconds =
 		totalMilliseconds / static_cast<double>(options.repeat);
-	const std::size_t rowsPerSecond = static_cast<std::size_t>(
-		(static_cast<double>(totalRows) / static_cast<double>(options.repeat))
-		/ (averageMilliseconds / 1000.0));
-	WriteReport(options.reportPath, options.filepath, options.repeat, runs,
-		averageMilliseconds, rowsPerSecond);
+	const double averageProcessedRows =
+		totalProcessedRows / static_cast<double>(options.repeat);
+	const double averageSeconds = averageMilliseconds / 1000.0;
+	const double averageRowsPerSecond = averageProcessedRows / averageSeconds;
+	const double averageMegabytesPerSecond =
+		static_cast<double>(inputBytes) / BYTES_PER_MB / averageSeconds;
+	if (!WriteReport(options, runs, averageMilliseconds, averageProcessedRows,
+		averageRowsPerSecond, averageMegabytesPerSecond))
+		return 1;
 	std::cout << "Report written to: " << options.reportPath << '\n';
 	return 0;
 }

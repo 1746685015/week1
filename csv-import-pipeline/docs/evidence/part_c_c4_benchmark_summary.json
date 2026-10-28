@@ -1,0 +1,29 @@
+{
+  "sample_100k": {
+    "input_bytes": 3146588,
+    "rows_imported": 98000,
+    "rows_skipped": 2000,
+    "processed_rows": 100000,
+    "total_error_count": 2000,
+    "memory_error_samples": 200,
+    "elapsed_ms": 135.197,
+    "rows_per_second": 739663.571,
+    "input_mb_per_second": 23.274,
+    "error_log_complete": true
+  },
+  "sample_1gb": {
+    "input_bytes": 1003898922,
+    "rows_imported": 9990000,
+    "rows_skipped": 10000,
+    "processed_rows": 10000000,
+    "total_error_count": 10000,
+    "memory_error_samples": 200,
+    "elapsed_ms": 26140.458,
+    "rows_per_second": 382548.771,
+    "input_mb_per_second": 38.404,
+    "peak_working_set_bytes": 5169152,
+    "error_log_complete": true
+  },
+  "report_open_failure_exit_code": 1,
+  "passed": true
+}

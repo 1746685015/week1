@@ -186,3 +186,47 @@ tools/run_benchmark_with_memory.ps1 `
 提交信息：`test: measure peak memory for large import`。
 
 标签：`part-c-c3-memory-measurement`。
+
+## C4：修正 benchmark 统计与失败语义
+
+### 修正内容
+
+- `rows/sec` 改为 `(rows_imported + rows_skipped) / elapsed_seconds`，坏行也属于已分类记录。
+- 每轮和汇总均报告 input bytes、elapsed、processed rows、rows/sec、十进制 MB/sec。
+- 分开报告 imported、skipped、`total_error_count`、`memory_error_samples` 和是否达到内存样本上限，不再把 `errors.size()` 误称为总错误数。
+- 报告 error-log 实际路径和 `error_log_complete`；多轮运行时为每轮生成带 `.runN` 后缀的独立 sidecar，避免后一轮覆盖前一轮证据。
+- 每轮保留独立耗时与指标，同时计算同一文件、同一配置的平均值。
+- 报告无法创建或写入时返回非零退出码；不存在“控制台成功但报告缺失”的假成功。
+- repeat_count 改用 `std::from_chars` 严格解析，非法或非正整数返回错误，不再使用无法报告转换失败的 `atoi`。
+
+### 100k 与 1 GB 验证
+
+100k 命令：
+
+```powershell
+build-review-baseline/Release/csvp_bench.exe `
+  data/sample_100k.csv 1 docs/evidence/part_c_c4_100k_report.txt `
+  build-review-baseline/c4_100k_errors.jsonl
+```
+
+实测 input=3,146,588 bytes、imported=98,000、skipped=2,000、processed=100,000、total errors=2,000、内存样本=200、elapsed=135.197 ms、739,663.571 rows/s、23.274 MB/s，sidecar 完整。
+
+1 GB 命令：
+
+```powershell
+build-review-baseline/Release/csvp_bench.exe `
+  data/sample_1gb.csv 1 docs/evidence/part_c_c4_1gb_report.txt `
+  docs/evidence/part_c_c2_errors.jsonl
+```
+
+实测 input=1,003,898,922 bytes、imported=9,990,000、skipped=10,000、processed=10,000,000、total errors=10,000、内存样本=200、elapsed=26,140.458 ms、382,548.771 rows/s、38.404 MB/s、峰值工作集 5,169,152 bytes，sidecar 完整且独立复核仍为 10,000 条、mismatch=0。
+
+另以 `sample_utf8.csv` 把报告路径设为目录，报告打开失败时进程退出码为 1。Release/Debug 构建均退出码 0、C++ 编译警告 0；Release ctest 64/64 通过；bench clang-tidy 退出码 0、可见告警/错误 0。
+
+报告与机器可读摘要：`docs/evidence/part_c_c4_100k_report.txt`、`docs/evidence/part_c_c4_1gb_report.txt`、`docs/evidence/part_c_c4_benchmark_summary.json`。
+
+### Git 证据
+
+提交信息：`fix(bench): report complete rows and error counts`。
+
+标签：`part-c-c4-benchmark-statistics`。
