@@ -1,0 +1,50 @@
+d24d73e (HEAD -> part-c, origin/part-c) docs: record Part C verification evidence
+8dd6983 (tag: part-c-c7-1gb-acceptance) test: verify 1GB import memory and integrity
+1216336 (tag: part-c-c6-io-tuning) perf(io): tune bounded input and error-log buffers
+2c72547 (tag: part-c-c5-row-reuse) perf(parser): reuse row field storage
+bf10e26 (tag: part-c-c4-benchmark-statistics) fix(bench): report complete rows and error counts
+247216c (tag: part-c-c3-memory-measurement) test: measure peak memory for large import
+136a2b4 (tag: part-c-c2-error-sidecar) feat: persist complete large-import error details
+3997d91 (tag: part-c-c1-integrity) test: add large-file integrity assertions
+c8e06f7 (tag: part-c-c0-baseline) test: record Part C dataset and baseline
+e1b3022 (tag: part-b-acceptance, origin/part-b, part-b) docs: record Part B verification evidence
+b305357 (tag: part-b-b7-worker-lifecycle) test: cover streaming worker lifecycle
+3e57335 (tag: part-b-b6-exception-safety) fix: make streaming cleanup exception-safe
+fca45e4 (tag: part-b-b5-timed-shutdown) feat: implement timed shutdown and pending count
+9ed4917 (tag: part-b-b4-progress-cancel) feat: support progress callback cancellation
+d186da8 (tag: part-b-b3-progress) feat: report streaming progress every 1000 rows
+a259e81 (tag: part-b-b2-async-import) feat: implement asynchronous CSV import
+d321c7c (tag: part-b-b1-lifecycle-state) feat: add streaming task lifecycle state
+60f9650 (tag: part-b-b0-baseline) chore: establish Part B baseline
+3ce2ac3 (origin/main, main) docs: archive A6 benchmark reports
+f1f5a25 chore: vendor GoogleTest dependency
+eb16e43 (tag: part-a-acceptance) docs: record final Part A acceptance
+6dbc371 (tag: part-a-a28-checked-regex-cache) fix: check compiled regex cache before access
+e5b362e (tag: part-a-a27-regex-parameter-safety) refactor: make regex validation parameters distinct
+cb24093 (tag: part-a-a26-size-constant-types) fix: widen parser size constant arithmetic
+aec7bec (tag: part-a-a25-document-links) docs: repair Part A evidence references
+c3b3af9 (tag: part-a-a24-default-value-audit) docs: record default value contract audit
+b58ab07 (tag: part-a-a23-regex-cache) perf: cache compiled validation regexes
+90b3515 (tag: part-a-a20-consistent-trim) test: verify consistent CSV whitespace trimming
+7f2eccd (tag: part-a-a19-iterative-empty-lines) fix: skip empty CSV lines iteratively
+fb0c8c7 (tag: part-a-a18-robust-io) fix: recover cleanly after oversized CSV lines
+e3507ba (tag: part-a-a17-safe-reentry) fix: validate parser paths and failed reentry
+fb1e130 (tag: part-a-a16-atomic-stats) fix: make import statistics atomic and consistent
+8a285ab (tag: part-a-a15-traceable-errors) fix: keep validation failures traceable
+b11d12c (tag: part-a-a14-numeric-validation) fix: reject numeric overflow and non-finite values
+59300ab (tag: part-a-a13-schema-contract) fix: enforce CSV schema column counts
+f233430 (tag: part-a-a12-raw-line) fix: preserve original CSV lines in errors
+4dc405a (tag: part-a-a11-read-status) fix: distinguish parser errors from end of file
+0e67e8c (tag: part-a-a10-no-header-schema) fix: validate headerless rows against schema
+2a708eb (tag: part-a-a9-line-endings) fix: distinguish CRLF from field carriage returns
+a87c5c0 (tag: part-a-a8-quoted-fields) fix: handle quoted CSV field boundaries
+91b4ae0 (tag: part-a-a7-wide-line-number) fix: use fixed-width CSV line numbers
+4d651b8 (tag: part-a-a6-buffered-io) perf: stream CSV input with bounded buffer
+b0b322d (tag: part-a-a5-safe-conversions) fix: expose checked row conversions
+cae49cd (tag: part-a-a4-gbk-boundaries) fix: validate multibyte CSV boundaries
+2ab8bad (tag: part-a-a3-skip-bad-rows) fix: skip and record malformed CSV rows
+6b8bc47 (tag: part-a-a2-reentry-state) fix: reset parser state on reuse
+b586682 (tag: part-a-a1-no-trailing-newline) fix: preserve final CSV row without newline
+ba8fda2 (tag: part-a-a0-asan-build) build: fix MSVC ASan test linkage
+420d16f Add CSV import pipeline project
+b130849 Initial commit
