@@ -1,6 +1,6 @@
 # 缺陷修复与特性实现报告
 
-> 候选人：_______________  日期：2026-10-28  用时：_______________
+> 学生：________马银龙_______  日期：2026-10-28  用时：_______________
 
 ---
 
@@ -132,9 +132,9 @@
 
 ## 附件
 
-请将以下文件随报告一并提交：
+以下文件随报告一并提交：
 
-1. `docs/evidence/final_git_log.txt`：提交历史。
+1. `docs/evidence/final_git_log.txt`：提交历史(当时写作业时还未有wps仓库，暂时提交到github仓库。https: https://github.com/1746685015/week1.git)。
 2. `docs/evidence/final_ctest_release.xml`、`final_ctest_debug.xml`：最终测试结果。
 3. `docs/evidence/final_asan_tests.xml` 与 `final_tool_verification.md`：ASan / clang-tidy 验收摘要。
 4. `docs/PART_A_EVIDENCE.md`、`PART_B_EVIDENCE.md`、`PART_C_EVIDENCE.md`：逐任务可复现证据。
