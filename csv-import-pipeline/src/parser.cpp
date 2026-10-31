@@ -250,25 +250,35 @@ bool CsvParser::splitLineToFields(const char *line, std::size_t length, Row &row
 		}
 		else
 		{
+			const std::size_t fieldStart = position;
 			while (position < length && line[position] != m_config.delimiter)
 			{
 				if (line[position] == '"')
 				{
+					field.append(line + fieldStart, position - fieldStart);
 					m_lastError = "Unexpected quote in unquoted field";
 					return false;
+				}
+
+				const unsigned char byte = static_cast<unsigned char>(line[position]);
+				if (byte <= 0x7FU)
+				{
+					++position;
+					continue;
 				}
 
 				const std::size_t characterLength = encodedCharacterLength(line, position, length);
 				if (characterLength == 0)
 				{
+					field.append(line + fieldStart, position - fieldStart);
 					m_lastError = isGbkEncoding()
 						? "Invalid GBK byte sequence"
 						: "Invalid UTF-8 byte sequence";
 					return false;
 				}
-				field.append(line + position, characterLength);
 				position += characterLength;
 			}
+			field.append(line + fieldStart, position - fieldStart);
 
 			if (m_config.trim_spaces)
 			{
@@ -293,31 +303,42 @@ bool CsvParser::handleQuotedField(const char *line, std::size_t &position, std::
 	std::string &field)
 {
 	++position;
+	std::size_t segmentStart = position;
 	while (position < length)
 	{
 		const char character = line[position];
 		if (character == '"')
 		{
+			field.append(line + segmentStart, position - segmentStart);
 			if (position + 1 < length && line[position + 1] == '"')
 			{
 				field.push_back('"');
 				position += 2;
+				segmentStart = position;
 				continue;
 			}
 			++position;
 			return true;
 		}
 
+		const unsigned char byte = static_cast<unsigned char>(character);
+		if (byte <= 0x7FU)
+		{
+			++position;
+			continue;
+		}
+
 		const std::size_t characterLength = encodedCharacterLength(line, position, length);
 		if (characterLength == 0)
 		{
+			field.append(line + segmentStart, position - segmentStart);
 			m_lastError = isGbkEncoding() ? "Invalid GBK byte sequence" : "Invalid UTF-8 byte sequence";
 			return false;
 		}
-		field.append(line + position, characterLength);
 		position += characterLength;
 	}
 
+	field.append(line + segmentStart, position - segmentStart);
 	m_lastError = "Unclosed quote in CSV field";
 	return false;
 }

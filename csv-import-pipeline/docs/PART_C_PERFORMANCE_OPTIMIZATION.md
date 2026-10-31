@@ -64,3 +64,54 @@ python tools/verify_error_log.py build-perf/perf_validate_fastpath_errors.jsonl.
 python tools/verify_error_log.py build-perf/perf_validate_fastpath_errors.jsonl.run2
 python tools/verify_error_log.py build-perf/perf_validate_fastpath_errors.jsonl.run3
 ```
+
+## P2：连续字段批量扫描与复制
+
+### 根因
+
+旧解析器逐字节调用编码检查，并通过 `std::string::append` 逐字符写入字段。对约 1 GB 的 ASCII 主体数据，这会产生接近十亿次细粒度判断和追加操作。
+
+### 修改
+
+- 未加引号字段按连续区段扫描，并在字段结束时一次性复制。
+- ASCII 字节直接前进，仅在遇到非 ASCII 首字节时调用 UTF-8/GBK 序列验证。
+- 加引号字段按引号分段复制；仍逐个处理 `""` 转义。
+- 保留非法引号、非法 UTF-8、非法 GBK、GBK 尾字节、CRLF 和空字段的原有语义。
+
+### 同时段 A/B 结果
+
+| 指标 | P1 独立对照 | P2 优化版 | 变化 |
+| --- | ---: | ---: | ---: |
+| 3 轮平均耗时 | 15,129.801 ms | 6,598.286 ms | -56.389% |
+| 平均吞吐 | 660,947.214 rows/s | 1,515,545.121 rows/s | +129.299% |
+| 平均输入吞吐 | 66.352 MB/s | 152.145 MB/s | +129.301% |
+| 峰值工作集 | 5,890,048 bytes | 5,496,832 bytes | 均远低于 50 MB |
+
+P2 三轮耗时分别为 6,603.89 ms、6,601.51 ms、6,589.47 ms，波动小于 0.3%。相对同一测试会话中的原版 18,022.881 ms，累计耗时下降 63.389%，速度为原版的 2.731 倍。
+
+### 正确性证据
+
+- Release：65/65 测试通过。
+- Debug：65/65 测试通过。
+- Parser 专项覆盖 UTF-8、GBK、GBK 尾字节与分隔符冲突、引号转义、非法引号、CRLF/LF/CR、跨缓冲区行和无尾换行。
+- P2 三轮均为 imported=9,990,000、skipped=10,000、total_error_count=10,000。
+- 三份 sidecar 均为 10,000 条、3,896,682 bytes、mismatch=0。
+- 三份 sidecar SHA-256 均为 `C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C`，证明错误完整性与稳定版本一致。
+- 最高峰值工作集为 5,496,832 bytes，仅占 50,000,000-byte 硬上限的 10.994%。
+
+### 复现命令
+
+```powershell
+cmake --build build-perf --config Release --target csvp_bench csvp_tests
+ctest --test-dir build-perf -C Release --output-on-failure
+build-perf/Release/csvp_bench.exe data/sample_1gb.csv 3 `
+  build-perf/perf_parser_batch_report.txt `
+  build-perf/perf_parser_batch_errors.jsonl
+python tools/verify_error_log.py build-perf/perf_parser_batch_errors.jsonl.run1
+python tools/verify_error_log.py build-perf/perf_parser_batch_errors.jsonl.run2
+python tools/verify_error_log.py build-perf/perf_parser_batch_errors.jsonl.run3
+```
+
+## 未采用实验
+
+曾实验把 `Stats` 原子计数从逐行发布改为每 1,000 行发布。独立同机 A/B 中，P1 为 15,129.801 ms，批量统计版为约 15,465.8 ms，后者慢约 2.2%。该实验已完整撤销，未提交到 Git。
