@@ -1,4 +1,12 @@
-d24d73e (HEAD -> part-c, origin/part-c) docs: record Part C verification evidence
+0d9f759 (HEAD -> part-c-perf, origin/part-c-perf) docs: record optimized 1GB acceptance
+b8e0d5c perf: add fast floating-point validation
+375db40 perf: scan ASCII fields in word blocks
+c893386 perf: batch parser field copies
+dd84f19 perf: avoid copies for valid cells
+d68026d (tag: part-c-pre-optimization, origin/part-c, part-c) docs: correct repository address label
+d88be88 docs: fill student and submission details
+aaf1bb7 (tag: part-c-acceptance) docs: archive final git history
+d24d73e docs: record Part C verification evidence
 8dd6983 (tag: part-c-c7-1gb-acceptance) test: verify 1GB import memory and integrity
 1216336 (tag: part-c-c6-io-tuning) perf(io): tune bounded input and error-log buffers
 2c72547 (tag: part-c-c5-row-reuse) perf(parser): reuse row field storage
