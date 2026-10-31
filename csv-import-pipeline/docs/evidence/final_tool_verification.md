@@ -64,5 +64,15 @@ python tools/verify_error_log.py `
 ## 证据关系
 
 - 本文件保存最终命令与摘要；XML 保存逐测试结果。
-- C7 正式三轮性能与内存数字以 `part_c_c7_final_1gb_report.txt` 和 `part_c_c7_acceptance_summary.json` 为准。
+- 优化后正式三轮性能与内存数字以 `part_c_perf_final_1gb_report.txt` 和 `part_c_perf_acceptance_summary.json` 为准；C7 文件保留为优化前基线。
 - 每个缺陷/特性的逐提交复现、根因和验证分别见 `PART_A_EVIDENCE.md`、`PART_B_EVIDENCE.md`、`PART_C_EVIDENCE.md`。
+
+## 2026-10-31 性能优化后复验
+
+- 被测代码提交：`b8e0d5c`。
+- Release / Debug / MSVC ASan RelWithDebInfo 均为 65/65 通过，ASan 零报告；三份 `final_*.xml` 已刷新为当前结果。
+- Release `--gtest_repeat=100 --gtest_shuffle`：100/100 轮、6,500/6,500 项通过。
+- clang-tidy 重新检查 4 个生产源和 3 个 benchmark/验收源：项目代码可见告警/错误 0；914 条系统/第三方告警被抑制，7 个已有局部 `NOLINT` 生效。
+- 正式 1 GB 三轮平均 5,841.035 ms、1,712,025.430 rows/s、171.870 MB/s；峰值工作集 5,443,584 bytes。
+- 三份正式 sidecar 和一份独立验收 sidecar 均为 10,000 条、mismatch=0、SHA-256 `C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C`。
+- 独立 `csvp_large_verify` 输出 `LARGE_IMPORT_INTEGRITY_PASS`。

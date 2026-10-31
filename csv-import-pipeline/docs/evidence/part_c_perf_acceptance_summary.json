@@ -1,0 +1,65 @@
+{
+  "code_commit": "b8e0d5c",
+  "input": {
+    "path": "data/sample_1gb.csv",
+    "bytes": 1003898922,
+    "data_rows": 10000000,
+    "sha256": "89FA6C306B9730EA71A782DA699C64CEC1EFC6B4097852BB457BC30ABC9477D0"
+  },
+  "build": {
+    "configuration": "Release",
+    "optimization": "/O2",
+    "input_buffer_bytes": 262144,
+    "error_log_buffer_bytes": 65536
+  },
+  "runs": [
+    {
+      "run": 1,
+      "imported": 9990000,
+      "skipped": 10000,
+      "total_errors": 10000,
+      "elapsed_ms": 5771.226,
+      "rows_per_second": 1732734.205,
+      "input_mb_per_second": 173.949,
+      "peak_working_set_bytes": 5173248
+    },
+    {
+      "run": 2,
+      "imported": 9990000,
+      "skipped": 10000,
+      "total_errors": 10000,
+      "elapsed_ms": 5717.887,
+      "rows_per_second": 1748897.923,
+      "input_mb_per_second": 175.572,
+      "peak_working_set_bytes": 5345280
+    },
+    {
+      "run": 3,
+      "imported": 9990000,
+      "skipped": 10000,
+      "total_errors": 10000,
+      "elapsed_ms": 6033.992,
+      "rows_per_second": 1657277.636,
+      "input_mb_per_second": 166.374,
+      "peak_working_set_bytes": 5443584
+    }
+  ],
+  "average_elapsed_ms": 5841.035,
+  "average_rows_per_second": 1712025.430,
+  "average_input_mb_per_second": 171.870,
+  "peak_working_set_bytes": 5443584,
+  "memory_limit_bytes": 50000000,
+  "error_logs": {
+    "records_each": 10000,
+    "bytes_each": 3896682,
+    "mismatch_each": 0,
+    "sha256_each": "C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C"
+  },
+  "regression": {
+    "release": "65/65",
+    "debug": "65/65",
+    "asan": "65/65, zero reports",
+    "stress": "100/100 iterations, 6500/6500 tests"
+  },
+  "large_import_integrity": "PASS"
+}

@@ -115,11 +115,11 @@
 
 ### C-2: 性能优化
 
-- **发现的性能瓶颈**：逐行临时 `std::string` 固定预留、字段复制和 `Row::clear()` 销毁字符串容量；输入块大小也需要用数据选择。
-- **优化方法**：Row 保留字段槽和字符串容量，Parser 直接写目标字段；输入块 64/256/1024 KiB、日志块 64/256/1024 KiB 分别做控制变量实验。最终选择输入 256 KiB、日志 64 KiB。
+- **发现的性能瓶颈**：除逐行临时字符串和字段复制外，合法单元格仍复制错误详情、解析器逐字符追加/扫描、浮点字段只走 `strtod`；输入块大小也需要用数据选择。
+- **优化方法**：Row 保留字段槽和字符串容量，Parser 直接写目标字段；合法值先走无分配校验；连续字段一次复制并以可移植 8 字节块扫描 ASCII；浮点优先 `from_chars`、失败时回退 `strtod`；最终选择输入 256 KiB、日志 64 KiB。
 - **100k 对比**：无 sidecar 的 C4 基线平均 134.034 ms、746,079.798 rows/s；直接复用字段后 46.203 ms、2,164,369.117 rows/s，约 2.90 倍。完整 sidecar 下 256 KiB 输入为 110.340 ms，优于 64 KiB 的 114.355 ms 和 1 MiB 的 113.467 ms。
-- **1 GB 正式三轮**：平均 18,001.574 ms、555,506.986 rows/s、55.767 MB/s；相对 C4 完整 sidecar 的 26,140.458 ms / 382,548.771 rows/s，耗时降低约 31.1%、吞吐提高约 45.2%。
-- **内存与完整性**：最高峰值工作集 5,382,144 bytes（5.382 MB / 5.133 MiB），低于 50,000,000 bytes；每轮 imported=9,990,000、skipped/errors=10,000，三份完整日志均 10,000 条、mismatch=0。
+- **1 GB 最终正式三轮**：平均 5,841.035 ms、1,712,025.430 rows/s、171.870 MB/s；相对优化前 C7 的 18,001.574 ms / 555,506.986 rows/s，耗时降低 67.553%、吞吐提高 208.192%，约为 3.082 倍速度。
+- **内存与完整性**：最高峰值工作集 5,443,584 bytes（5.444 MB / 5.191 MiB），仅占 50,000,000-byte 上限的 10.887%；每轮 imported=9,990,000、skipped/errors=10,000，三份完整日志均 10,000 条、mismatch=0、SHA-256 完全一致。
 
 ### C-3: 额外发现
 
@@ -138,4 +138,4 @@
 2. `docs/evidence/final_ctest_release.xml`、`final_ctest_debug.xml`：最终测试结果。
 3. `docs/evidence/final_asan_tests.xml` 与 `final_tool_verification.md`：ASan / clang-tidy 验收摘要。
 4. `docs/PART_A_EVIDENCE.md`、`PART_B_EVIDENCE.md`、`PART_C_EVIDENCE.md`：逐任务可复现证据。
-5. `docs/evidence/part_c_c7_final_1gb_report.txt`、`part_c_c7_acceptance_summary.json`：1 GB 正式三轮报告与汇总。
+5. `docs/evidence/part_c_perf_final_1gb_report.txt`、`part_c_perf_acceptance_summary.json`：优化后 1 GB 正式三轮报告与汇总；C7 原始基线仍保留用于对照。

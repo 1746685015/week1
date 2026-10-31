@@ -198,3 +198,15 @@ P4 五轮耗时分别为 5,624.29 ms、5,643.13 ms、5,649.75 ms、5,759.13 ms�
 - 五份 sidecar 均为 10,000 条、3,896,682 bytes、mismatch=0。
 - 五份 sidecar SHA-256 均为 `C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C`。
 - 最高峰值工作集为 5,591,040 bytes，仅占 50,000,000-byte 硬上限的 11.182%。
+
+## 最终正式验收
+
+- 被测代码：`b8e0d5c`。
+- 正式三轮平均：5,841.035 ms、1,712,025.430 rows/s、171.870 MB/s。
+- 正式最高峰值工作集：5,443,584 bytes（5.444 MB / 5.191 MiB）。
+- 三轮均处理 10,000,000 条数据，完整记录 10,000 条错误；三份 sidecar 均 mismatch=0 且 SHA-256 与稳定原版一致。
+- 独立生产验收输出 `LARGE_IMPORT_INTEGRITY_PASS`，耗时 5,796.1 ms。
+- Release/Debug/ASan 各 65/65 通过；Release 随机压力复跑 100 轮，共 6,500 项测试全部通过。
+- 正式报告和机器汇总分别为 `docs/evidence/part_c_perf_final_1gb_report.txt`、`docs/evidence/part_c_perf_acceptance_summary.json`。
+
+未采用的直接读缓冲解析实验三轮平均约 5,703.030 ms，没有优于当时 P4 的 5,661.871 ms，因此完整撤销。最终版本只保留有独立 A/B 证据且行为回归通过的优化。

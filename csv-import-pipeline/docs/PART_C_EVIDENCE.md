@@ -366,3 +366,33 @@ P1 单独收益约 1.6%，P2 相对 P0 的总耗时下降约 7.8%；P3 相对 P0
 提交信息：`docs: record Part C verification evidence`。
 
 标签：`part-c-acceptance`。
+
+## C9：追加性能优化与最终复验
+
+### 优化内容
+
+- 合法单元格先走无分配验证，仅失败时构造并复制 `CellError`。
+- 未加引号字段按连续区段一次复制；ASCII 主体以可移植 8 字节块扫描，遇到引号、分隔符或非 ASCII 字节后回到原有严格校验。
+- 浮点验证优先使用 C++17 `from_chars`，不接受的旧语法回退 `strtod`，因此兼顾速度与兼容性。
+- 重新实测并否决批量统计、64 KiB/1 MiB 输入缓冲和直接解析读缓冲等无稳定收益方案；详细 A/B 见 `docs/PART_C_PERFORMANCE_OPTIMIZATION.md`。
+
+### 最终正式三轮结果
+
+- 被测代码 SHA：`b8e0d5c`；Release `/O2`；输入/日志缓冲仍为 256 KiB / 64 KiB。
+- 输入仍为 1,003,898,922 bytes、10,000,000 条数据行，SHA-256 仍为 `89FA6C306B9730EA71A782DA699C64CEC1EFC6B4097852BB457BC30ABC9477D0`。
+
+| 轮次 | imported | skipped/errors | elapsed | rows/s | MB/s | 峰值工作集 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 9,990,000 | 10,000 | 5,771.226 ms | 1,732,734.205 | 173.949 | 5,173,248 bytes |
+| 2 | 9,990,000 | 10,000 | 5,717.887 ms | 1,748,897.923 | 175.572 | 5,345,280 bytes |
+| 3 | 9,990,000 | 10,000 | 6,033.992 ms | 1,657,277.636 | 166.374 | 5,443,584 bytes |
+
+平均耗时 5,841.035 ms，平均吞吐 1,712,025.430 rows/s、171.870 MB/s。相对 C7 的 18,001.574 ms / 555,506.986 rows/s，耗时降低 67.553%、吞吐提高 208.192%，速度约为 3.082 倍。最高峰值工作集 5,443,584 bytes，仅占严格 50,000,000-byte 上限的 10.887%，余量 44,556,416 bytes。
+
+### 最终完整性与回归
+
+- 三轮均满足 processed=10,000,000、total_error_count=10,000、内存样本=200、`error_log_complete=true`。
+- 三份完整 sidecar 均为 10,000 条、3,896,682 bytes、mismatch=0，SHA-256 均为 `C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C`。
+- 独立 `csvp_large_verify` 再次得到 imported=9,990,000、skipped=10,000、total_errors=10,000、total_lines=10,000,000，并输出 `LARGE_IMPORT_INTEGRITY_PASS`；独立 sidecar 同样 mismatch=0、SHA 不变。
+- Release 65/65、Debug 65/65、MSVC ASan RelWithDebInfo 65/65 且零报告；Release 随机压力复跑 100/100 轮，共 6,500 项测试全部通过。
+- 正式报告：`docs/evidence/part_c_perf_final_1gb_report.txt`；机器可读摘要：`docs/evidence/part_c_perf_acceptance_summary.json`。
