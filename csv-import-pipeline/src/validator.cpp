@@ -69,9 +69,19 @@ std::vector<CellError> FieldValidator::validate(const Row &row) const
 	const std::size_t sharedColumnCount = std::min(row.size(), m_rules.size());
 	for (std::size_t columnIndex = 0; columnIndex < sharedColumnCount; ++columnIndex)
 	{
-		CellError error = validateField(columnIndex, row[columnIndex], m_rules[columnIndex]);
-		if (error.code != ErrorCode::Ok)
-			errors.push_back(std::move(error));
+		std::string errorMessage;
+		const ErrorCode errorCode = validateValue(columnIndex, row[columnIndex],
+			m_rules[columnIndex], errorMessage);
+		if (errorCode == ErrorCode::Ok)
+			continue;
+
+		CellError error;
+		error.column_index = columnIndex;
+		error.column_name = m_rules[columnIndex].name;
+		error.raw_value = row[columnIndex];
+		error.code = errorCode;
+		error.message = std::move(errorMessage);
+		errors.push_back(std::move(error));
 	}
 
 	for (std::size_t columnIndex = sharedColumnCount; columnIndex < row.size(); ++columnIndex)
@@ -103,35 +113,34 @@ CellError FieldValidator::validateField(std::size_t columnIndex, const std::stri
 	error.column_index = columnIndex;
 	error.column_name = rule.name;
 	error.raw_value = rawValue;
-
-	if (rule.required && rawValue.empty())
-	{
-		error.code = ErrorCode::RequiredFieldMissing;
-		error.message = "Required field is empty";
-		return error;
-	}
-	if (rawValue.empty())
-		return error;
-
-	std::string errorMessage;
-	if (!validateType(rawValue, rule.type, errorMessage))
-	{
-		error.code = ErrorCode::TypeConversionError;
-		error.message = std::move(errorMessage);
-		return error;
-	}
-	if (rule.has_range && !validateRange(rawValue, rule, errorMessage))
-	{
-		error.code = ErrorCode::RangeError;
-		error.message = std::move(errorMessage);
-		return error;
-	}
-	if (!rule.regex.empty() && !validateRegex(columnIndex, rawValue, rule, errorMessage))
-	{
-		error.code = ErrorCode::RegexMismatch;
-		error.message = std::move(errorMessage);
-	}
+	error.code = validateValue(columnIndex, rawValue, rule, error.message);
 	return error;
+}
+
+ErrorCode FieldValidator::validateValue(std::size_t columnIndex, const std::string &value,
+	const FieldRule &rule, std::string &errorMessage) const
+{
+	if (rule.required && value.empty())
+	{
+		errorMessage = "Required field is empty";
+		return ErrorCode::RequiredFieldMissing;
+	}
+	if (value.empty())
+		return ErrorCode::Ok;
+
+	if (!validateType(value, rule.type, errorMessage))
+	{
+		return ErrorCode::TypeConversionError;
+	}
+	if (rule.has_range && !validateRange(value, rule, errorMessage))
+	{
+		return ErrorCode::RangeError;
+	}
+	if (!rule.regex.empty() && !validateRegex(columnIndex, value, rule, errorMessage))
+	{
+		return ErrorCode::RegexMismatch;
+	}
+	return ErrorCode::Ok;
 }
 
 bool FieldValidator::getConfigurationError(std::string &errorMessage) const

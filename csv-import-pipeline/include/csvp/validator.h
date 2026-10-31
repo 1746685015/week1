@@ -35,6 +35,8 @@ public:
 	}
 
 private:
+	ErrorCode validateValue(std::size_t columnIndex, const std::string &value,
+		const FieldRule &rule, std::string &errorMessage) const;
 	bool validateType(const std::string &value, FieldType type, std::string &errorMessage) const;
 	bool validateRange(const std::string &value, const FieldRule &rule,
 		std::string &errorMessage) const;
