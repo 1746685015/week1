@@ -1,12 +1,22 @@
 #include "csvp/parser.h"
 
 #include <cctype>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 
 namespace csvp {
 
 namespace {
+
+constexpr std::uint64_t BYTE_LOW_BITS = 0x0101010101010101ULL;
+constexpr std::uint64_t BYTE_HIGH_BITS = 0x8080808080808080ULL;
+
+bool ContainsByte(std::uint64_t word, unsigned char value)
+{
+	const std::uint64_t matches = word ^ (BYTE_LOW_BITS * value);
+	return ((matches - BYTE_LOW_BITS) & ~matches & BYTE_HIGH_BITS) != 0U;
+}
 
 bool EqualsIgnoringCase(const char *left, const char *right)
 {
@@ -251,8 +261,26 @@ bool CsvParser::splitLineToFields(const char *line, std::size_t length, Row &row
 		else
 		{
 			const std::size_t fieldStart = position;
-			while (position < length && line[position] != m_config.delimiter)
+			while (position < length)
 			{
+				if (line[position] == m_config.delimiter)
+					break;
+
+				while (position + sizeof(std::uint64_t) <= length)
+				{
+					std::uint64_t word = 0U;
+					std::memcpy(&word, line + position, sizeof(word));
+					if ((word & BYTE_HIGH_BITS) != 0U
+						|| ContainsByte(word, static_cast<unsigned char>(m_config.delimiter))
+						|| ContainsByte(word, static_cast<unsigned char>('"')))
+					{
+						break;
+					}
+					position += sizeof(word);
+				}
+				if (position >= length || line[position] == m_config.delimiter)
+					break;
+
 				if (line[position] == '"')
 				{
 					field.append(line + fieldStart, position - fieldStart);
@@ -306,6 +334,20 @@ bool CsvParser::handleQuotedField(const char *line, std::size_t &position, std::
 	std::size_t segmentStart = position;
 	while (position < length)
 	{
+		while (position + sizeof(std::uint64_t) <= length)
+		{
+			std::uint64_t word = 0U;
+			std::memcpy(&word, line + position, sizeof(word));
+			if ((word & BYTE_HIGH_BITS) != 0U
+				|| ContainsByte(word, static_cast<unsigned char>('"')))
+			{
+				break;
+			}
+			position += sizeof(word);
+		}
+		if (position >= length)
+			break;
+
 		const char character = line[position];
 		if (character == '"')
 		{

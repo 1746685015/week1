@@ -115,3 +115,52 @@ python tools/verify_error_log.py build-perf/perf_parser_batch_errors.jsonl.run3
 ## 未采用实验
 
 曾实验把 `Stats` 原子计数从逐行发布改为每 1,000 行发布。独立同机 A/B 中，P1 为 15,129.801 ms，批量统计版为约 15,465.8 ms，后者慢约 2.2%。该实验已完整撤销，未提交到 Git。
+
+在 P2 快速解析版本上又以 1,024 行为周期复测批量统计。逐行统计版为 6,598.286 ms，批量统计版为约 6,864.8 ms，后者慢约 4.0%。说明原子统计不是新热路径的主要瓶颈，该实验再次完整撤销。
+
+输入缓冲区也使用同一 1 GB 数据重新扫描：64 KiB、256 KiB、1 MiB 的三轮平均耗时分别约为 6,698.077 ms、6,598.286 ms、6,645.593 ms。1 MiB 的峰值工作集还从约 5.50 MB 增至约 6.71 MB，因此继续保留 256 KiB。
+
+## P3：8 字节 ASCII 块扫描
+
+### 根因
+
+P2 已把字段内容合并为一次复制，但仍逐字节判断分隔符、引号和编码。样例的长姓名字段以 ASCII 为主，逐字节循环仍占用明显 CPU 时间。
+
+### 修改
+
+- 使用 `memcpy` 安全读取未对齐的 8 字节块，不执行越界读取。
+- 通过可移植的位运算同时检测分隔符、引号和非 ASCII 高位。
+- 普通 ASCII 块一次前进 8 字节；检测到特殊字节后继续使用原有逐字符和编码校验逻辑。
+- 不依赖 SSE/AVX 或 Windows 专属接口，非 ASCII、引号与自定义分隔符语义不变。
+
+### 5+5 轮独立 A/B 结果
+
+| 指标 | P2 独立对照 | P3 优化版 | 变化 |
+| --- | ---: | ---: | ---: |
+| 5 轮平均耗时 | 6,745.562 ms | 6,180.238 ms | -8.381% |
+| 平均吞吐 | 1,482,456.107 rows/s | 1,618,060.627 rows/s | +9.147% |
+| 平均输入吞吐 | 148.824 MB/s | 162.437 MB/s | +9.147% |
+| 峰值工作集 | 6,283,264 bytes | 5,795,840 bytes | 均远低于 50 MB |
+
+P3 五轮耗时分别为 6,165.25 ms、6,126.79 ms、6,161.00 ms、6,275.54 ms、6,172.61 ms；中位数为 6,165.25 ms。相对原版同会话基线 18,022.881 ms，累计耗时下降 65.709%，速度为原版的 2.916 倍。
+
+### 正确性与安全性证据
+
+- Release：65/65 测试通过。
+- Debug：65/65 测试通过。
+- MSVC AddressSanitizer RelWithDebInfo：65/65 测试通过，零 ASan 报告。
+- P3 五轮均为 imported=9,990,000、skipped=10,000、total_error_count=10,000。
+- 五份 sidecar 均为 10,000 条、3,896,682 bytes、mismatch=0。
+- 五份 sidecar SHA-256 均为 `C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C`。
+- 最高峰值工作集为 5,795,840 bytes，仅占 50,000,000-byte 硬上限的 11.592%。
+
+### ASan 复现命令
+
+```powershell
+cmake -S . -B build-perf-asan -G "Visual Studio 17 2022" -A x64 `
+  -DENABLE_ASAN=ON -DBUILD_TESTS=ON -DBUILD_BENCH=OFF
+cmake --build build-perf-asan --config RelWithDebInfo --target csvp_tests
+$asanRuntime = "D:/vs2022application/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64"
+$env:Path = "$asanRuntime;$env:Path"
+ctest --test-dir build-perf-asan -C RelWithDebInfo --output-on-failure
+```
