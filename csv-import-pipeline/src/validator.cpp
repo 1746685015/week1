@@ -35,10 +35,21 @@ bool ParseDouble(const std::string &text, double &value)
 	if (text.empty() || text.front() == ' ' || text.front() == '\t')
 		return false;
 
+	const char *begin = text.data();
+	const char *end = begin + text.size();
+	double parsedValue = 0.0;
+	const std::from_chars_result conversion = std::from_chars(begin, end, parsedValue);
+	if (conversion.ec == std::errc() && conversion.ptr == end && std::isfinite(parsedValue))
+	{
+		value = parsedValue;
+		return true;
+	}
+
+	// Preserve legacy strtod syntax for uncommon values that are outside from_chars grammar.
 	errno = 0;
-	char *end = nullptr;
-	const double parsedValue = std::strtod(text.c_str(), &end);
-	if (end != text.c_str() + text.size() || errno == ERANGE || !std::isfinite(parsedValue))
+	char *legacyEnd = nullptr;
+	parsedValue = std::strtod(text.c_str(), &legacyEnd);
+	if (legacyEnd != end || errno == ERANGE || !std::isfinite(parsedValue))
 		return false;
 	value = parsedValue;
 	return true;

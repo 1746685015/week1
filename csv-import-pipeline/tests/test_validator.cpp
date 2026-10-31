@@ -237,6 +237,7 @@ TEST(Validator, RejectsNumericOverflowAndNonFiniteValues)
 	csvp::FieldValidator doubleValidator;
 	doubleValidator.addRule(doubleRule);
 	EXPECT_EQ(doubleValidator.validateField(0U, "-0", doubleRule).code, csvp::ErrorCode::Ok);
+	EXPECT_EQ(doubleValidator.validateField(0U, "+1.5", doubleRule).code, csvp::ErrorCode::Ok);
 	for (const char *invalidValue : {"1e9999", "nan", "inf", "-inf", " 1.0"})
 	{
 		EXPECT_EQ(doubleValidator.validateField(0U, invalidValue, doubleRule).code,

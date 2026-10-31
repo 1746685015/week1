@@ -164,3 +164,37 @@ $asanRuntime = "D:/vs2022application/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64"
 $env:Path = "$asanRuntime;$env:Path"
 ctest --test-dir build-perf-asan -C RelWithDebInfo --output-on-failure
 ```
+
+## P4：浮点验证快速转换
+
+### 根因
+
+每条数据都要验证 `score` 浮点字段。旧实现只使用 `strtod`，需要处理 C locale 和全局 `errno`，对简单十进制字段存在不必要开销。
+
+### 修改
+
+- 优先使用 C++17 `std::from_chars` 完成无 locale、无分配的十进制转换。
+- 仅当快路径不接受输入时回退到原有 `strtod`，保留 `+1.5` 等旧语法兼容性。
+- 两条路径都要求完整消费输入、拒绝溢出并拒绝 `NaN`/`Inf`。
+- 新增 `+1.5` 兼容性回归断言。
+
+### 5+5 轮独立 A/B 结果
+
+| 指标 | P3 独立对照 | P4 优化版 | 变化 |
+| --- | ---: | ---: | ---: |
+| 5 轮平均耗时 | 6,124.975 ms | 5,661.871 ms | -7.561% |
+| 平均吞吐 | 1,632,659.757 rows/s | 1,766,200.470 rows/s | +8.179% |
+| 平均输入吞吐 | 163.903 MB/s | 177.309 MB/s | +8.179% |
+| 峰值工作集 | 6,066,176 bytes | 5,591,040 bytes | 均远低于 50 MB |
+
+P4 五轮耗时分别为 5,624.29 ms、5,643.13 ms、5,649.75 ms、5,759.13 ms、5,633.05 ms。相对原版同会话基线 18,022.881 ms，累计耗时下降 68.585%，速度为原版的 3.183 倍。
+
+### 正确性与安全性证据
+
+- Release：65/65 测试通过。
+- Debug：65/65 测试通过。
+- MSVC AddressSanitizer RelWithDebInfo：65/65 测试通过，零 ASan 报告。
+- P4 五轮均为 imported=9,990,000、skipped=10,000、total_error_count=10,000。
+- 五份 sidecar 均为 10,000 条、3,896,682 bytes、mismatch=0。
+- 五份 sidecar SHA-256 均为 `C237216C682B60FDF8B633807D023E52BDF5778C769DD9599A267D73C1BF9E4C`。
+- 最高峰值工作集为 5,591,040 bytes，仅占 50,000,000-byte 硬上限的 11.182%。
